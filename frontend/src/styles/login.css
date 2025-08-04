@@ -1,0 +1,43 @@
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 80px;
+  font-family: Arial, sans-serif;
+}
+
+.login-container h1 {
+  margin-bottom: 20px;
+}
+
+.login-container form {
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+}
+
+.login-container input {
+  margin-bottom: 10px;
+  padding: 10px;
+  font-size: 14px;
+}
+
+.login-container button {
+  padding: 10px;
+  font-size: 16px;
+  cursor: pointer;
+  background-color: goldenrod;
+  color: white;
+  border: none;
+  transition: background-color 0.3s ease;
+}
+
+.login-container button:hover {
+  background-color: darkgoldenrod;
+}
+
+.login-container .mensaje {
+  margin-top: 10px;
+  color: blue;
+  font-weight: bold;
+}

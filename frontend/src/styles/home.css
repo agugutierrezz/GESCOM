@@ -1,0 +1,29 @@
+.home-container {
+  font-family: Arial, sans-serif;
+  padding: 40px;
+  text-align: center;
+}
+
+.home-container h1 {
+  margin-bottom: 30px;
+  font-size: 28px;
+  color: #333;
+}
+
+.home-container button {
+  display: block;
+  margin: 10px auto;
+  padding: 12px 20px;
+  font-size: 16px;
+  width: 280px;
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  background-color: #f0ad4e;
+  color: white;
+  transition: background-color 0.3s ease;
+}
+
+.home-container button:hover {
+  background-color: #d1881f;
+}

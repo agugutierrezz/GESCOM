@@ -1,0 +1,94 @@
+/* Fuente moderna */
+body, .reserva-container {
+  font-family: 'Segoe UI', 'Roboto', sans-serif;
+}
+
+.flatpickr-wrapper-visual {
+  margin-bottom: 20px;
+}
+
+/* Encabezado del calendario */
+.flatpickr-months .flatpickr-month {
+  text-transform: capitalize;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+/* Grilla y días */
+.flatpickr-day {
+  width: 36px;
+  height: 36px;
+  line-height: 36px;
+  font-weight: bold;
+  border-radius: 50% !important;
+  margin: 2px;
+}
+
+.flatpickr-calendar {
+  margin-top: 10px;
+}
+
+.calendario-leyenda {
+  display: flex;
+  gap: 20px;
+  margin: 20px 0 10px 0;
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.calendario-reserva-wrapper {
+  margin-bottom: 30px;
+}
+
+.calendario-reserva-wrapper.solo-lectura {
+  width: 300px;
+}
+
+.calendario-label h3 {
+  margin: 10px 0 10px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  text-transform: capitalize;
+}
+
+.leyenda-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.leyenda-cuadro {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 2px rgba(0,0,0,0.2);
+}
+
+.leyenda-cuadro.rojo {
+  background-color: #e74c3c;
+}
+
+.leyenda-cuadro.amarillo {
+  background-color: #f1c40f;
+}
+
+.leyenda-cuadro.verde {
+  background-color: #2ecc71;
+}
+
+.flatpickr-wrapper-visual {
+  margin-bottom: 30px;
+}
+
+.flatpickr-day.oculto-otro-mes {
+  visibility: hidden !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+}

@@ -1,0 +1,32 @@
+{
+  "name": "frontend",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "electron": "electron ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "flatpickr": "^4.6.13",
+    "html2pdf.js": "^0.10.3",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-flatpickr": "^4.0.11",
+    "react-icons": "^5.5.0",
+    "react-router-dom": "^7.7.1",
+    "react-toastify": "^11.0.5",
+    "sweetalert2": "^11.22.2",
+    "sweetalert2-react-content": "^5.1.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.7.0",
+    "electron": "^37.2.5",
+    "vite": "^7.0.6"
+  }
+}
