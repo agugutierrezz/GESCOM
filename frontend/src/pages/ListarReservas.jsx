@@ -10,6 +10,8 @@ const MySwal = withReactContent(Swal);
 
 function ListarReservas() {
   const [reservas, setReservas] = useState([]);
+  const [filtro, setFiltro] = useState('');
+  const [mostrarInactivas, setMostrarInactivas] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -20,6 +22,10 @@ function ListarReservas() {
 
   const handleEdit = (reserva) => {
     navigate('/reservas/create', { state: reserva });
+  };
+
+  const handleView = (reserva) => {
+    navigate(`/reservas/${reserva.id}`);
   };
 
   const handleDelete = async (reserva) => {
@@ -55,15 +61,46 @@ function ListarReservas() {
     <><div>
       <BotonVolver />
       </div><div className="reserva-container">
-        <h2>Reservas</h2>
+        <h2>Reservas Próximas</h2>
+        <input
+          type="text"
+          placeholder="Buscar por nombre, fecha o cabaña..."
+          onChange={(e) => setFiltro(e.target.value.toLowerCase())}
+          style={{ marginBottom: 12, width: '100%', padding: 8 }}
+        />
 
-        {reservas.map(reserva => (
-          console.log(reserva),
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+          <input
+            type="checkbox"
+            checked={mostrarInactivas}
+            onChange={() => setMostrarInactivas(prev => !prev)}
+          />
+          Mostrar también reservas pasadas
+        </label>
+
+        {reservas
+          .filter(r => {
+            const texto = filtro.trim();
+            if (!mostrarInactivas && !r.esactiva) return false;
+
+            const fechaInicio = new Date(r.fecha_inicio).toLocaleDateString();
+            const fechaFin = new Date(r.fecha_fin).toLocaleDateString();
+            const nombreCabana = typeof r.cabana === 'object' ? r.cabana?.nombre?.toLowerCase() : String(r.cabana).toLowerCase();
+
+            return (
+              r.cliente.toLowerCase().includes(texto) ||
+              nombreCabana.includes(texto) ||
+              fechaInicio.includes(texto) ||
+              fechaFin.includes(texto)
+            );
+          })
+          .map(reserva => (
           <ReservaCard
             key={reserva.id}
             reserva={reserva}
             onEdit={handleEdit}
-            onDelete={() => handleDelete(reserva)} />
+            onDelete={() => handleDelete(reserva)} 
+            onView={handleView}/>
         ))}
       </div></>
   );

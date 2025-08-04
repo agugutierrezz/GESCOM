@@ -6,10 +6,13 @@ import 'react-toastify/dist/ReactToastify.css';
 import SelectorCabana from '../components/consultar-reserva/SelectorCabana';
 import CalendarioReserva from '../components/consultar-reserva/CalendarioReserva';
 import BotonVolver from '../components/BotonVolver';
+import InputDinero from '../components/reserva/InputDinero';
+import AdicionalesForm from '../components/reserva/AdicionalesForm'
 import '../styles/reserva.css';
 
 function CrearReserva() {
   const [cliente, setCliente] = useState('');
+  const [descripcion, setDescripcion] = useState('');
   const [cabana, setCabana] = useState('');
   const [fechaInicio, setFechaInicio] = useState(null);
   const [fechaFin, setFechaFin] = useState(null);
@@ -22,6 +25,7 @@ function CrearReserva() {
   const [guardando, setGuardando] = useState(false);
   const [editando, setEditando] = useState(false);
   const [reservaId, setReservaId] = useState(null);
+  const [adicionales, setAdicionales] = useState([]);
 
 
   const cabanas = useContext(CabanasContext);
@@ -48,16 +52,18 @@ function CrearReserva() {
       }
 
       setCliente(r.cliente || '');
+      setDescripcion(r.descripcion || '');
       setFechaInicio(r.fecha_inicio ? new Date(r.fecha_inicio) : null);
       setFechaFin(r.fecha_fin ? new Date(r.fecha_fin) : null);
       setCostoTotal(r.costo_total || '');
       setSena(r.sena || 0);
+      setAdicionales(r.adicionales || []);
     }
   }, [location.state]);
 
   useEffect(() => {
     if (!cabana) return;
-    fetch(`${import.meta.env.VITE_API_URL}/api/reservas?cabana_id=${cabana.id}`)
+    fetch(`${import.meta.env.VITE_API_URL}/api/reservas?cabana_id=${cabana}`)
       .then(res => res.json())
       .then(data => {
         setReservasExistentes(data);
@@ -102,9 +108,43 @@ function CrearReserva() {
       });
   }, [cabana]);
 
+  useEffect(() => {
+    if (!editando || !reservaId) return;
+
+    fetch(`${import.meta.env.VITE_API_URL}/api/adicionales/${reservaId}`)
+      .then(res => res.json())
+      .then(data => {
+            const adicionalesConFlag = data.map(a => ({
+              ...a,
+              fecha_pago: a.fecha_pago?.split('T')[0], 
+              guardado: true
+            }));
+        setAdicionales(adicionalesConFlag);
+      })
+      .catch(err => {
+        console.error('❌ Error al obtener adicionales:', err);
+      });
+  }, [editando, reservaId]);
+
+
   function validarReserva() {
     if (!fechaInicio || !fechaFin) {
-      setMensaje('❌ Seleccioná ambas fechas');
+      setMensaje('Seleccioná ambas fechas');
+      return false;
+    }
+
+    if (fechaInicio > fechaFin) {
+      setMensaje('La fecha de ingreso no puede ser posterior a la de egreso');
+      return false;
+    }
+
+    if (parseFloat(costoTotal) <= 0) {
+      setMensaje('El costo total debe ser mayor a cero');
+      return false;
+    }
+
+    if (parseFloat(sena) > parseFloat(costoTotal)) {
+      setMensaje('La seña no puede ser mayor al costo total');
       return false;
     }
 
@@ -124,12 +164,12 @@ function CrearReserva() {
         (egreso > rIngreso && egreso <= rEgreso) ||
         (ingreso <= rIngreso && egreso >= rEgreso)
       ) {
-        setMensaje(`❌ Conflicto con reserva de ${r.cliente}`);
+        setMensaje(`Conflicto con reserva de ${r.cliente}`);
         return false;
       }
     }
 
-    setMensaje('✅ Reserva disponible');
+    setMensaje('Reserva disponible');
     return true;
   }
 
@@ -143,6 +183,7 @@ function CrearReserva() {
 
     const body = {
       cliente,
+      descripcion,
       cabana_id: cabana,
       fecha_inicio: fechaInicio,
       fecha_fin: fechaFin,
@@ -150,6 +191,7 @@ function CrearReserva() {
       hora_fin: '10',
       costo_total: parseFloat(costoTotal),
       sena: parseFloat(sena),
+      adicionales
     };
 
     try {
@@ -190,11 +232,14 @@ function CrearReserva() {
           <label>Cliente</label>
           <input value={cliente} onChange={e => setCliente(e.target.value)} required />
 
+          <label>Descripcion (opcional)</label>
+          <input value={descripcion} onChange={e => setDescripcion(e.target.value)} />
+
           <SelectorCabana
             cabanas={cabanas}
             cabanaSeleccionada={cabana}
             onChange={value => {
-              setCabana(value);
+              setCabana(String(value));
               setFechaInicio(null);
               setFechaFin(null);
               setMensaje('');
@@ -218,10 +263,16 @@ function CrearReserva() {
           />
 
           <label>Costo Total</label>
-          <input type="number" value={costoTotal} onChange={e => setCostoTotal(e.target.value)} required />
+          <InputDinero value={costoTotal} onChange={setCostoTotal} />
 
           <label>Seña</label>
-          <input type="number" value={sena} onChange={e => setSena(e.target.value)} />
+          <InputDinero value={sena} onChange={setSena} />
+
+          <AdicionalesForm
+            reservaId={editando ? reservaId : null}
+            adicionales={adicionales}
+            setAdicionales={setAdicionales}
+          />
 
           <button type="submit" disabled={guardando}>
             {guardando ? 'Guardando...' : 'Guardar Reserva'}

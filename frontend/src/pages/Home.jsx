@@ -16,6 +16,7 @@ function Home() {
         navigate('/reservas/consulta');
         break;
       case 'salir':
+        localStorage.removeItem('usuario');
         navigate('/');
         break;
       default:

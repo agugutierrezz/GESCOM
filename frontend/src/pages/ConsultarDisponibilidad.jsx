@@ -18,11 +18,16 @@ function ConsultarDisponibilidad() {
   const capitalizar = str => str.charAt(0).toUpperCase() + str.slice(1);
 
   useEffect(() => {
-    if (!cabana?.id) return;
+    if (!cabana || !cabana.id) return;
 
     fetch(`${import.meta.env.VITE_API_URL}/api/reservas?cabana_id=${cabana.id}`)
       .then(res => res.json())
       .then(data => {
+        if (!Array.isArray(data)) {
+          console.error('❌ La respuesta no es un array:', data);
+          setReservas([]);
+          return;
+        }
         setReservas(data);
         const estado = {};
 
