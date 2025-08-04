@@ -57,7 +57,7 @@ function CrearReserva() {
 
   useEffect(() => {
     if (!cabana) return;
-    fetch(`http://localhost:3001/api/reservas?cabana_id=${cabana}`)
+    fetch(`${import.meta.env.VITE_API_URL}/api/reservas?cabana_id=${cabana.id}`)
       .then(res => res.json())
       .then(data => {
         setReservasExistentes(data);
@@ -154,8 +154,8 @@ function CrearReserva() {
 
     try {
       const url = editando
-        ? `http://localhost:3001/api/reservas/${reservaId}`
-        : 'http://localhost:3001/api/reservas';
+        ? `${import.meta.env.VITE_API_URL}/api/reservas/${reservaId}`
+        : `${import.meta.env.VITE_API_URL}/api/reservas`;
       const metodo = editando ? 'PUT' : 'POST';
 
       const res = await fetch(url, {

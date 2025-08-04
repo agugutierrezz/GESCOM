@@ -6,7 +6,7 @@ export function CabanasProvider({ children }) {
   const [cabanas, setCabanas] = useState([]);
 
   useEffect(() => {
-    fetch('http://localhost:3001/api/cabanas')
+    fetch(`${import.meta.env.VITE_API_URL}/api/cabanas`)
       .then(res => res.json())
       .then(setCabanas);
   }, []);

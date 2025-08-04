@@ -20,7 +20,7 @@ function ConsultarDisponibilidad() {
   useEffect(() => {
     if (!cabana?.id) return;
 
-    fetch(`http://localhost:3001/api/reservas?cabana_id=${cabana.id}`)
+    fetch(`${import.meta.env.VITE_API_URL}/api/reservas?cabana_id=${cabana.id}`)
       .then(res => res.json())
       .then(data => {
         setReservas(data);

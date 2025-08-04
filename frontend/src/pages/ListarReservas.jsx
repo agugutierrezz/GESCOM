@@ -13,7 +13,7 @@ function ListarReservas() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch('http://localhost:3001/api/reservas')
+    fetch(`${import.meta.env.VITE_API_URL}/api/reservas`)
       .then(res => res.json())
       .then(data => setReservas(data));
   }, []);
@@ -35,7 +35,7 @@ function ListarReservas() {
     });
 
     if (result.isConfirmed) {
-      await fetch(`http://localhost:3001/api/reservas/${reserva.id}`, {
+      await fetch(`${import.meta.env.VITE_API_URL}/api/reservas/${reserva.id}`, {
         method: 'DELETE',
       });
 
