@@ -83,12 +83,3 @@ body, .reserva-container {
   margin-bottom: 30px;
 }
 
-.flatpickr-day.oculto-otro-mes {
-  visibility: hidden !important;
-  pointer-events: none !important;
-  height: 0 !important;
-  width: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-}

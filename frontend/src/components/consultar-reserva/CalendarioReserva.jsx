@@ -32,7 +32,8 @@ function CalendarioReserva({
       if (soloLectura && mesFijo instanceof Date) {
         const esOtroMes = date.getMonth() !== mesFijo.getMonth() || date.getFullYear() !== mesFijo.getFullYear();
         if (esOtroMes) {
-          dayElem.classList.add('oculto-otro-mes');
+          dayElem.remove();
+          return;
         }
       }
 
@@ -77,8 +78,6 @@ function CalendarioReserva({
     options.minDate = primerDia;
     options.maxDate = ultimoDia;
   }
-
-
 
   return (
     <div className={`calendario-reserva-wrapper ${soloLectura ? 'solo-lectura' : ''}`}>

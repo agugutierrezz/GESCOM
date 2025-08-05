@@ -1,5 +1,11 @@
-import { FaEdit, FaTrash, FaEye } from 'react-icons/fa'
-import './ReservaCard.css';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import CardActions from '@mui/material/CardActions';
+import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 
 function ReservaCard({ reserva, onEdit, onDelete, onView }) {
   const formatearFecha = (fecha) =>
@@ -9,33 +15,28 @@ function ReservaCard({ reserva, onEdit, onDelete, onView }) {
     Number(n).toLocaleString('es-AR');
 
   return (
-    <div className="reserva-card">
-      <div className="reserva-info">
-        <p><strong>Cliente:</strong> {reserva.cliente}</p>
-        <p><strong>Descripcion:</strong> {reserva.descripcion}</p>
-        <p><strong>Cabaña:</strong> {reserva.cabana?.nombre || reserva.cabana || '...'}</p>
-        <p><strong>Ingreso:</strong> {formatearFecha(reserva.fecha_inicio)} - 14:00</p>
-        <p><strong>Egreso:</strong> {formatearFecha(reserva.fecha_fin)} - 10:00</p>
-        <p>
-          <strong>Costo Total:</strong> ${formatearNumero(reserva.costo_total)}
-          {' '}<strong>- Seña:</strong> ${formatearNumero(reserva.sena)}
-        </p>
-        <p><strong>Faltante:</strong> ${formatearNumero(reserva.costo_total - reserva.sena)}</p>
-      </div>
-      <div className="reserva-acciones">
-        <button onClick={() => onEdit(reserva)} title="Editar">
-          <FaEdit />
-        </button>
-        <button onClick={() => onDelete(reserva)} title="Eliminar">
-          <FaTrash />
-        </button>
-        <button onClick={() => onView(reserva)} title="Ver detalles">
-          <FaEye />
-        </button>
-      </div>
-    </div>
+    <Card sx={{ mb: 2 }}>
+      <CardContent>
+        <Typography variant="body2"><strong>Cliente:</strong> {reserva.cliente}</Typography>
+        <Typography variant="body2"><strong>Descripcion:</strong> {reserva.descripcion}</Typography>
+        <Typography variant="body2"><strong>Cabaña:</strong> {reserva.cabana?.nombre || reserva.cabana || '...'}</Typography>
+        <Typography variant="body2"><strong>Ingreso:</strong> {formatearFecha(reserva.fecha_inicio)} - 14:00</Typography>
+        <Typography variant="body2"><strong>Egreso:</strong> {formatearFecha(reserva.fecha_fin)} - 10:00</Typography>
+        <Typography variant="body2"><strong>Costo Total:</strong> ${formatearNumero(reserva.costo_total)}</Typography>
+        <Typography variant="body2"><strong>Seña:</strong> ${formatearNumero(reserva.sena)}</Typography>
+    </CardContent><CardActions>
+        <IconButton onClick={() => onEdit(reserva)} title="Editar">
+          <EditIcon />
+        </IconButton>
+        <IconButton onClick={() => onDelete(reserva)} title="Eliminar">
+          <DeleteIcon />
+        </IconButton>
+        <IconButton onClick={() => onView(reserva)} title="Ver detalles">
+          <VisibilityIcon />
+        </IconButton>
+      </CardActions>
+    </Card>
   );
 }
 
 export default ReservaCard;
-

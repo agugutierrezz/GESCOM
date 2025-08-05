@@ -22,8 +22,6 @@ router.get('/:reserva_id', async (req, res) => {
   }
 });
 
-module.exports = router;
-
 // POST /api/adicionales
 router.post('/', async (req, res) => {
   const { reserva_id, monto, fecha_pago, descripcion } = req.body;
@@ -65,3 +63,5 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ message: 'Error al eliminar adicional' });
   }
 });
+
+module.exports = router;

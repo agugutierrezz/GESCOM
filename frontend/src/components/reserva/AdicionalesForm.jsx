@@ -1,5 +1,9 @@
 import { toast } from 'react-toastify';
 import InputDinero from './InputDinero';
+import { Button, TextField } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import SaveIcon from '@mui/icons-material/Save';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 function AdicionalesForm({ reservaId, adicionales, setAdicionales }) {
   const agregar = () => {
@@ -95,37 +99,57 @@ function AdicionalesForm({ reservaId, adicionales, setAdicionales }) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <label>Adicionales</label>
-        <button type="button" onClick={agregar}>+ Agregar Adicional</button>
+        <Button type="button" onClick={agregar} variant="contained" size="small" startIcon={<AddIcon />}>
+          Agregar Adicional
+        </Button>
       </div>
       {adicionales.map((a, i) => (
         <div key={i} className="adicional-item" style={{ border: '1px solid #ccc', padding: 8, marginBottom: 10 }}>
           <InputDinero
+            label="Monto"
             value={a.monto}
             onChange={(val) => actualizar(i, 'monto', val)}
+            sx={{ mt: 1 }}
+            size="small"
           />
+
           <input
             type="date"
             value={a.fecha_pago}
             onChange={e => actualizar(i, 'fecha_pago', e.target.value)}
-            style={{ marginTop: 6 }}
+            sx={{ mt: 1 }}
+            size="small"
+            InputLabelProps={{ shrink: true }}
           />
           <input
             type="text"
             placeholder="Descripción"
             value={a.descripcion}
             onChange={e => actualizar(i, 'descripcion', e.target.value)}
-            style={{ marginTop: 6 }}
+            sx={{ mt: 1 }}
+            size="small"
           />
           <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-            <button
+            <Button
               type="button"
               onClick={() => guardar(i)}
               disabled={a.guardado}
               title={a.guardado ? 'Ya guardado' : 'Guardar en base de datos'}
+              variant="contained"
+              size="small"
+              startIcon={<SaveIcon />}
             >
-              💾 Guardar
-            </button>
-            <button type="button" onClick={() => eliminar(i)}>🗑️ Eliminar</button>
+              Guardar
+            </Button>
+             <Button
+              type="button"
+              onClick={() => eliminar(i)}
+              variant="outlined"
+              size="small"
+              startIcon={<DeleteIcon />}
+            >
+              Eliminar
+            </Button>
           </div>
         </div>
       ))}

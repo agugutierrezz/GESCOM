@@ -66,10 +66,10 @@ function ListarReservas() {
           type="text"
           placeholder="Buscar por nombre, fecha o cabaña..."
           onChange={(e) => setFiltro(e.target.value.toLowerCase())}
-          style={{ marginBottom: 12, width: '100%', padding: 8 }}
+          className="busqueda-reserva"
         />
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+        <label className="label-checkbox-reserva">
           <input
             type="checkbox"
             checked={mostrarInactivas}

@@ -235,6 +235,7 @@ function CrearReserva() {
           <label>Descripcion (opcional)</label>
           <input value={descripcion} onChange={e => setDescripcion(e.target.value)} />
 
+          <label>Cabaña</label>
           <SelectorCabana
             cabanas={cabanas}
             cabanaSeleccionada={cabana}
@@ -263,7 +264,7 @@ function CrearReserva() {
           />
 
           <label>Costo Total</label>
-          <InputDinero value={costoTotal} onChange={setCostoTotal} />
+          <InputDinero value={costoTotal} onChange={setCostoTotal} required/>
 
           <label>Seña</label>
           <InputDinero value={sena} onChange={setSena} />

@@ -1,3 +1,5 @@
 node_modules
 .env
 gescom-win32-x64
+*.txt
+*.rar

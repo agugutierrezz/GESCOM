@@ -31,15 +31,28 @@ function ReservaDetalle() {
 
     // Título
     doc.setFontSize(22);
-    doc.text('FACTURA DE RESERVA', 105, 60, { align: 'center' });
+    doc.text('COMPROBANTE DE PAGO', 105, 60, { align: 'center' });
 
     // Metadatos (derecha)
     doc.setFontSize(12);
-    doc.text(`Factura #${reserva.id}`, 200, 20, { align: 'right' });
+    doc.text(`Comprobante #${reserva.id}`, 200, 20, { align: 'right' });
     doc.text(`Fecha: ${new Date().toLocaleDateString('es-AR')}`, 200, 26, { align: 'right' });
 
     // Datos principales de reserva
     let y = 75;
+    doc.setFontSize(14);
+    doc.text('Datos del Complejo', 15, y);
+    doc.setLineWidth(0.5);
+    doc.line(15, y + 2, 195, y + 2);
+    y += 10;
+
+    doc.setFontSize(12);
+    doc.text('Calle: Mar del Plata e/ 38 y 39', 15, y); y += 8;
+    doc.text('Ciudad: Mar Azul, Partido de Villa Gessell, Provincia de Buenos Aires', 15, y); y += 8;
+    doc.text('CP: B7165', 15, y);
+    y += 10;
+
+    // Datos principales de reserva
     doc.setFontSize(14);
     doc.text('Datos de la Reserva', 15, y);
     doc.setLineWidth(0.5);
@@ -51,7 +64,6 @@ function ReservaDetalle() {
     doc.text(`Cabaña: ${reserva.cabana?.nombre || '---'}`, 15, y); y += 8;
     doc.text(`Fecha de Ingreso: ${new Date(reserva.fecha_inicio).toLocaleDateString('es-AR')}`, 15, y); y += 8;
     doc.text(`Fecha de Egreso: ${new Date(reserva.fecha_fin).toLocaleDateString('es-AR')}`, 15, y); y += 8;
-    doc.text(`Descripción: ${reserva.descripcion || '---'}`, 15, y); y += 10;
     doc.text(`Costo de Reserva: $${Number(reserva.costo_total).toLocaleString('es-AR')}`, 15, y); y += 12;
 
     // Encabezado de tabla
@@ -65,7 +77,7 @@ function ReservaDetalle() {
     doc.text('Descripción', 15, y);
     doc.text('Monto', 150, y, { align: 'right' });
     doc.setFont(undefined, 'normal');
-    y += 6;
+    y += 8;
 
     // Seña
     doc.text('Seña', 15, y);
@@ -89,7 +101,6 @@ function ReservaDetalle() {
     y += 8;
 
     // Totales (a la derecha)
-    const faltante = Number(reserva.costo_total) - totalPagado;
     doc.setFont(undefined, 'bold');
     doc.text('Total Pagado:', 120, y);
     doc.text(`$${totalPagado.toLocaleString('es-AR')}`, 195, y, { align: 'right' });
@@ -102,8 +113,8 @@ function ReservaDetalle() {
   if (!reserva) return <p>Cargando reserva...</p>;
 
   return (
+    <><BotonVolver />
     <div className="reserva-container">
-      <BotonVolver />
       <h2>Detalle de Reserva</h2>
       <p><strong>Cliente:</strong> {reserva.cliente}</p>
       <p><strong>Descripción:</strong> {reserva.descripcion || '---'}</p>
@@ -117,14 +128,14 @@ function ReservaDetalle() {
       {adicionales.length === 0
         ? <p>No hay adicionales.</p>
         : <ul>{adicionales.map((a, i) => (
-            <li key={i}>
-              ${Number(a.monto).toLocaleString('es-AR')} - {new Date(a.fecha_pago).toLocaleDateString('es-AR')} - {a.descripcion}
-            </li>
-          ))}</ul>
-      }
+          <li key={i}>
+            ${Number(a.monto).toLocaleString('es-AR')} - {new Date(a.fecha_pago).toLocaleDateString('es-AR')} - {a.descripcion}
+          </li>
+        ))}</ul>}
 
       <button onClick={descargarPDF}>📄 Descargar PDF</button>
     </div>
+    </>
   );
 }
 

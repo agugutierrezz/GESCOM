@@ -1,13 +1,14 @@
 import { useNavigate } from 'react-router-dom';
-import '../styles/botonVolver.css';
+import IconButton from '@mui/material/IconButton';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 function BotonVolver() {
   const navigate = useNavigate();
 
   return (
-    <button className="boton-volver" onClick={() => navigate(-1)}>
-      ←
-    </button>
+    <IconButton onClick={() => navigate(-1)} aria-label="volver">
+      <ArrowBackIcon />
+    </IconButton>
   );
 }
 

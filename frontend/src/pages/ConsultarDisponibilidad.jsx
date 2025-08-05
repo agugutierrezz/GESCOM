@@ -80,7 +80,7 @@ function ConsultarDisponibilidad() {
       margin: 0.5,
       filename: nombreArchivo,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
+      html2canvas: { scale: 2, scrollX: 0, scrollY: -window.scrollY },
       jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
     }).save();
   };
@@ -108,9 +108,8 @@ function ConsultarDisponibilidad() {
           <>
             <div className="calendarios-mes" ref={calendarioRef}>
               {[0, 1, 2].map(mesOffset => {
-                const fecha = new Date();
-                fecha.setMonth(fecha.getMonth() + mesOffset);
-                fecha.setDate(1);
+                const hoy = new Date();
+                const fecha = new Date(hoy.getFullYear(), hoy.getMonth() + mesOffset, 1);
                 return (
                   <CalendarioReserva
                     key={mesOffset}

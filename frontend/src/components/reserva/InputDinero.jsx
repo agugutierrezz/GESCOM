@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import './InputDinero.css';
+import TextField from '@mui/material/TextField';
 
-function InputDinero({ value, onChange }) {
+function InputDinero({ value, onChange, label='' }) {
   const [texto, setTexto] = useState('');
 
   const formatear = (num) => {
@@ -34,14 +34,14 @@ function InputDinero({ value, onChange }) {
   };
 
   return (
-    <div className="input-dinero-wrapper">
-      <input
-        type="text"
-        inputMode="decimal"
+    <input
         value={texto}
         onChange={handleChange}
+        label={label}
+        fullWidth
+        size="medium"
+        inputMode="decimal"
       />
-    </div>
   );
 }
 
