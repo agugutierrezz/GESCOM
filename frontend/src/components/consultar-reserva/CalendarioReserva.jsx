@@ -89,7 +89,11 @@ function CalendarioReserva({
       <div className={soloLectura ? 'flatpickr-wrapper-visual' : ''}>
         <Flatpickr
           value={value}
-          onChange={soloLectura ? () => {} : date => onChange(date[0])}
+          onChange={soloLectura ? () => {} : date => {
+            const fija = new Date(date[0]);
+            fija.setHours(12, 0, 0, 0); 
+            onChange(fija);
+          }}
           options={options}
         />
       </div>

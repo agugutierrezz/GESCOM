@@ -181,12 +181,23 @@ function CrearReserva() {
     setGuardando(true);
     setMensaje('Cargando reserva...');
 
+    function formatearFechaLocal(fecha) {
+      const corregida = new Date(fecha);
+      corregida.setDate(corregida.getDate() + 1); // ⬅️ FIX aquí
+
+      const año = corregida.getFullYear();
+      const mes = String(corregida.getMonth() + 1).padStart(2, '0');
+      const dia = String(corregida.getDate()).padStart(2, '0');
+
+      return `${año}-${mes}-${dia}`;
+    }
+
     const body = {
       cliente,
       descripcion,
       cabana_id: cabana,
-      fecha_inicio: fechaInicio,
-      fecha_fin: fechaFin,
+      fecha_inicio: formatearFechaLocal(fechaInicio),
+      fecha_fin: formatearFechaLocal(fechaFin),    
       hora_inicio: '14',
       hora_fin: '10',
       costo_total: parseFloat(costoTotal),
