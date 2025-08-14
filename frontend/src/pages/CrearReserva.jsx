@@ -7,7 +7,7 @@ import SelectorCabana from '../components/consultar-reserva/SelectorCabana';
 import CalendarioReserva from '../components/consultar-reserva/CalendarioReserva';
 import BotonVolver from '../components/BotonVolver';
 import InputDinero from '../components/reserva/InputDinero';
-import AdicionalesForm from '../components/reserva/AdicionalesForm'
+import AdicionalesForm from '../components/reserva/AdicionalesForm';
 import '../styles/reserva.css';
 
 function CrearReserva() {
@@ -26,7 +26,11 @@ function CrearReserva() {
   const [editando, setEditando] = useState(false);
   const [reservaId, setReservaId] = useState(null);
   const [adicionales, setAdicionales] = useState([]);
-
+  const [cotizaciones, setCotizaciones] = useState(null);
+  const [dolares, setDolares] = useState({
+    montoUSD: '',
+    tipoCambio: 'blue_venta',
+  });
 
   const cabanas = useContext(CabanasContext);
   const navigate = useNavigate();
@@ -51,10 +55,17 @@ function CrearReserva() {
         }
       }
 
+      function parsearFechaLocal(fechaStr) {
+        const soloFecha = fechaStr.includes('T') ? fechaStr.split('T')[0] : fechaStr;
+        const [año, mes, dia] = soloFecha.split('-');
+        return new Date(Number(año), Number(mes) - 1, Number(dia) - 1);
+      }
+
+
       setCliente(r.cliente || '');
       setDescripcion(r.descripcion || '');
-      setFechaInicio(r.fecha_inicio ? new Date(r.fecha_inicio) : null);
-      setFechaFin(r.fecha_fin ? new Date(r.fecha_fin) : null);
+      setFechaInicio(r.fecha_inicio ? parsearFechaLocal(r.fecha_inicio) : null);
+      setFechaFin(r.fecha_fin ? parsearFechaLocal(r.fecha_fin) : null);
       setCostoTotal(r.costo_total || '');
       setSena(r.sena || 0);
       setAdicionales(r.adicionales || []);
@@ -69,36 +80,35 @@ function CrearReserva() {
         setReservasExistentes(data);
         const estado = {};
 
-      data
-        .filter(r => !editando || r.id !== reservaId)
-        .forEach(r => {
-          const inicio = new Date(r.fecha_inicio);
-          const fin = new Date(r.fecha_fin);
-          const rInicio = new Date(inicio);
-          const rFin = new Date(fin);
-          rInicio.setHours(14, 0, 0, 0);
-          rFin.setHours(10, 0, 0, 0);
+        data
+          .filter(r => !editando || r.id !== reservaId)
+          .forEach(r => {
+            const inicio = new Date(r.fecha_inicio);
+            const fin = new Date(r.fecha_fin);
+            const rInicio = new Date(inicio);
+            const rFin = new Date(fin);
+            rInicio.setHours(14, 0, 0, 0);
+            rFin.setHours(10, 0, 0, 0);
 
-          const keyInicio = rInicio.toISOString().split('T')[0];
-          const keyFin = rFin.toISOString().split('T')[0];
+            const keyInicio = rInicio.toISOString().split('T')[0];
+            const keyFin = rFin.toISOString().split('T')[0];
 
-          estado[keyInicio] = estado[keyInicio] === 'libre-egreso' ? 'ocupado'
-            : estado[keyInicio] === 'ocupado' ? 'ocupado'
-            : 'libre-ingreso';
+            estado[keyInicio] = estado[keyInicio] === 'libre-egreso' ? 'ocupado'
+              : estado[keyInicio] === 'ocupado' ? 'ocupado'
+              : 'libre-ingreso';
 
-          estado[keyFin] = estado[keyFin] === 'libre-ingreso' ? 'ocupado'
-            : estado[keyFin] === 'ocupado' ? 'ocupado'
-            : 'libre-egreso';
+            estado[keyFin] = estado[keyFin] === 'libre-ingreso' ? 'ocupado'
+              : estado[keyFin] === 'ocupado' ? 'ocupado'
+              : 'libre-egreso';
 
-          let actual = new Date(rInicio);
-          actual.setDate(actual.getDate() + 1);
-          while (actual < rFin) {
-            const key = actual.toISOString().split('T')[0];
-            estado[key] = 'ocupado';
+            let actual = new Date(rInicio);
             actual.setDate(actual.getDate() + 1);
-          }
-        });
-
+            while (actual < rFin) {
+              const key = actual.toISOString().split('T')[0];
+              estado[key] = 'ocupado';
+              actual.setDate(actual.getDate() + 1);
+            }
+          });
 
         setDiasEstado(estado);
         const ocupadas = Object.entries(estado)
@@ -114,11 +124,11 @@ function CrearReserva() {
     fetch(`${import.meta.env.VITE_API_URL}/api/adicionales/${reservaId}`)
       .then(res => res.json())
       .then(data => {
-            const adicionalesConFlag = data.map(a => ({
-              ...a,
-              fecha_pago: a.fecha_pago?.split('T')[0], 
-              guardado: true
-            }));
+        const adicionalesConFlag = data.map(a => ({
+          ...a,
+          fecha_pago: a.fecha_pago?.split('T')[0],
+          guardado: true
+        }));
         setAdicionales(adicionalesConFlag);
       })
       .catch(err => {
@@ -126,6 +136,39 @@ function CrearReserva() {
       });
   }, [editando, reservaId]);
 
+  // 🔁 Carga cotizaciones dólar
+  useEffect(() => {
+    async function obtenerDolares() {
+      try {
+        const [oficialRes, blueRes] = await Promise.all([
+          fetch('https://dolarapi.com/v1/dolares/oficial'),
+          fetch('https://dolarapi.com/v1/dolares/blue'),
+        ]);
+        const oficial = await oficialRes.json();
+        const blue = await blueRes.json();
+        setCotizaciones({
+          oficial_compra: oficial.compra,
+          oficial_venta: oficial.venta,
+          blue_compra: blue.compra,
+          blue_venta: blue.venta,
+        });
+      } catch (err) {
+        console.error('❌ Error al obtener cotizaciones:', err);
+      }
+    }
+
+    obtenerDolares();
+  }, []);
+
+  useEffect(() => {
+    if (!cotizaciones) return;
+    const valorUSD = parseFloat(dolares.montoUSD);
+    if (!isNaN(valorUSD)) {
+      const cotizacion = cotizaciones[dolares.tipoCambio];
+      const enPesos = valorUSD * cotizacion;
+      setCostoTotal(enPesos.toFixed(2));
+    }
+  }, [dolares, cotizaciones]);
 
   function validarReserva() {
     if (!fechaInicio || !fechaFin) {
@@ -183,12 +226,10 @@ function CrearReserva() {
 
     function formatearFechaLocal(fecha) {
       const corregida = new Date(fecha);
-      corregida.setDate(corregida.getDate() + 1); // ⬅️ FIX aquí
-
+      corregida.setDate(corregida.getDate() + 1); // 🔧 para evitar desfase
       const año = corregida.getFullYear();
       const mes = String(corregida.getMonth() + 1).padStart(2, '0');
       const dia = String(corregida.getDate()).padStart(2, '0');
-
       return `${año}-${mes}-${dia}`;
     }
 
@@ -197,7 +238,7 @@ function CrearReserva() {
       descripcion,
       cabana_id: cabana,
       fecha_inicio: formatearFechaLocal(fechaInicio),
-      fecha_fin: formatearFechaLocal(fechaFin),    
+      fecha_fin: formatearFechaLocal(fechaFin),
       hora_inicio: '14',
       hora_fin: '10',
       costo_total: parseFloat(costoTotal),
@@ -274,8 +315,44 @@ function CrearReserva() {
             diasEstado={diasEstado}
           />
 
+          {cotizaciones && (
+            <>
+              <label>Reserva en Dólares (opcional)</label>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <input
+                  type="number"
+                  placeholder="Monto en USD"
+                  value={dolares.montoUSD}
+                  onChange={e => setDolares({ ...dolares, montoUSD: e.target.value })}
+                  style={{ flex: 1 }}
+                />
+                <select
+                  value={dolares.tipoCambio}
+                  onChange={e => setDolares({ ...dolares, tipoCambio: e.target.value })}
+                  style={{ flex: 1 }}
+                >
+                  <option value="blue_venta">
+                    Blue Venta (${cotizaciones.blue_venta.toLocaleString('es-AR')})
+                  </option>
+                  <option value="blue_compra">
+                    Blue Compra (${cotizaciones.blue_compra.toLocaleString('es-AR')})
+                  </option>
+                  <option value="oficial_venta">
+                    Oficial Venta (${cotizaciones.oficial_venta.toLocaleString('es-AR')})
+                  </option>
+                  <option value="oficial_compra">
+                    Oficial Compra (${cotizaciones.oficial_compra.toLocaleString('es-AR')})
+                  </option>
+                </select>
+              </div>
+              <small style={{ fontStyle: 'italic', color: 'gray' }}>
+                Se actualizará el Costo Total automáticamente
+              </small>
+            </>
+          )}
+
           <label>Costo Total</label>
-          <InputDinero value={costoTotal} onChange={setCostoTotal} required/>
+          <InputDinero value={costoTotal} onChange={setCostoTotal} required />
 
           <label>Seña</label>
           <InputDinero value={sena} onChange={setSena} />
