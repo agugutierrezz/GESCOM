@@ -1,0 +1,65 @@
+/* ===== LIGHT (por defecto) ===== */
+:root{
+  --bg: #f2f5fb;
+  --bg-elev-1: #ffffff;
+  --bg-elev-2: #eef1f7;
+  --surface: #ffffff;
+
+  --text: #0f1220;
+  --text-dim: #4b5163;
+
+  --primary: #0F828C;
+  --primary-600: #0fa2ad;
+
+  --danger: #901E3E;
+  --danger-600: #b74363;
+
+  --btn-primary: var(--primary);
+  --btn-primary-hover: var(--primary-600);
+  --btn-primary-ring: rgba(15,130,140,.35);
+  --btn-primary-stroke: rgba(0,0,0,.12);
+
+  --btn-danger: var(--danger);
+  --btn-danger-hover: var(--danger-600);
+  --btn-danger-ring: rgba(144,30,62,.35);
+  --btn-danger-stroke: rgba(0,0,0,.12);
+
+  --card-radius: 16px;
+  --shadow-low: 0 6px 16px rgba(0,0,0,.08);
+  --shadow-mid: 0 10px 28px rgba(0,0,0,.12);
+  --border: 1px solid rgba(0,0,0,.08);
+  --focus-ring: 0 0 0 3px rgba(15,130,140,.35);
+}
+
+/* ===== DARK (cuando <html data-theme="dark">) ===== */
+:root[data-theme="dark"]{
+  --bg: #0f1220;
+  --bg-elev-1: #171a2b;
+  --bg-elev-2: #1e2236;
+  --surface: #1b2033;
+
+  --text: #e6e9f2;
+  --text-dim: #aab0c0;
+
+  --primary: #0F828C;
+  --primary-600: #74d7e0;
+
+  --danger: #901E3E;
+  --danger-600: #c55373;
+
+  --btn-primary: var(--primary);
+  --btn-primary-hover: var(--primary-600);
+  --btn-primary-ring: rgba(48, 87, 134, 0.45);
+  --btn-primary-stroke: rgba(255,255,255,0.14);
+
+  --btn-danger: var(--danger);
+  --btn-danger-hover: var(--danger-600);
+  --btn-danger-ring: rgba(110, 45, 58, 0.45);
+  --btn-danger-stroke: rgba(255,255,255,0.14);
+
+  --card-radius: 16px;
+  --shadow-low: 0 6px 16px rgba(0,0,0,.25);
+  --shadow-mid: 0 10px 28px rgba(0,0,0,.35);
+  --border: 1px solid rgba(255,255,255,.08);
+  --focus-ring: 0 0 0 3px rgba(48, 87, 134, 0.40);
+}

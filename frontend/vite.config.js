@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig({
-  base: './', // ✅ ruta relativa necesaria para Electron
+  base: './',
   plugins: [react()],
   root: './',
   build: {

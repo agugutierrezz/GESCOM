@@ -1,0 +1,23 @@
+/* --- RESET & BASE --- */
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+
+html { background: var(--bg); }        /* por si el body no pinta primero */
+body {
+  margin: 0;                           /* <— ELIMINA el borde/blanco del navegador */
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+
+/* Utils */
+.container{max-width:1120px;margin:0 auto;padding:24px}
+.grid{display:grid;gap:16px}
+.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.muted{color:var(--text-dim)}
+.bold{font-weight:600}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+  background:var(--bg-elev-2);border:var(--border);font-size:.85rem;color:var(--text)}

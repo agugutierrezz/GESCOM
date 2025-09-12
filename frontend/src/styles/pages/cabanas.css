@@ -1,0 +1,43 @@
+/* Contenedor centrado y con ancho acotado */
+.cabs__wrap{
+  max-width: 860px;           /* ← ajustá a gusto (820–900) */
+  margin: 0 auto;
+  padding: 20px 14px 40px;
+}
+
+.cabs__back{
+  position: fixed;
+  left: 12px;
+  top: 12px;
+  z-index: 10;
+}
+
+.cabs__title{
+  text-align: center;
+  margin: 6px 0 16px;
+  font-size: 2rem;
+}
+
+/* Grilla de tarjetas: una columna y separadas */
+.cabs__grid{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+/* Card de cada fila (quita el padding inline del JSX) */
+.cab__card{
+  padding: 12px;
+}
+
+/* Texto vacío */
+.cabs__empty{
+  color: var(--text-dim);
+  text-align: center;
+  margin: 8px 0 0;
+}
+
+@media (max-width:720px){ .cab__item{ grid-template-columns:1fr; } }
+.cab__actions{ display:flex; gap:10px; justify-content:flex-end; }
+.cabs__new{ margin:12px 0 6px; display:grid; grid-template-columns:1fr 120px 1fr 140px; gap:10px; }
+@media (max-width:720px){ .cabs__new{ grid-template-columns:1fr; } }

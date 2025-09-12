@@ -2,18 +2,23 @@ import { useEffect, useState, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import { CabanasContext } from '../context/CabanasContext';
+import { usePrefs } from '../context/PrefsContext';
 import 'react-toastify/dist/ReactToastify.css';
 import SelectorCabana from '../components/consultar-reserva/SelectorCabana';
 import CalendarioReserva from '../components/consultar-reserva/CalendarioReserva';
 import BotonVolver from '../components/BotonVolver';
 import InputDinero from '../components/reserva/InputDinero';
 import AdicionalesForm from '../components/reserva/AdicionalesForm';
-import '../styles/reserva.css';
+import Backdrop from '@mui/material/Backdrop';           
+import CircularProgress from '@mui/material/CircularProgress'; 
+import '../styles/pages/crear-reservas.css';             
+
+const API = import.meta.env.VITE_API_URL;
 
 function CrearReserva() {
   const [cliente, setCliente] = useState('');
   const [descripcion, setDescripcion] = useState('');
-  const [cabana, setCabana] = useState('');
+  const [cabana, setCabana] = useState(''); // id en string para el <select>
   const [fechaInicio, setFechaInicio] = useState(null);
   const [fechaFin, setFechaFin] = useState(null);
   const [costoTotal, setCostoTotal] = useState('');
@@ -27,77 +32,98 @@ function CrearReserva() {
   const [reservaId, setReservaId] = useState(null);
   const [adicionales, setAdicionales] = useState([]);
   const [cotizaciones, setCotizaciones] = useState(null);
-  const [dolares, setDolares] = useState({
-    montoUSD: '',
-    tipoCambio: 'blue_venta',
-  });
+  const [dolares, setDolares] = useState({ montoUSD: '', tipoCambio: 'blue_venta' });
+  const prefs = usePrefs();
+
+  const [horaIngresoLibre, setHoraIngresoLibre] = useState(prefs.horaIngreso);
+  const [horaEgresoLibre , setHoraEgresoLibre ] = useState(prefs.horaEgreso);
+  useEffect(()=> setHoraIngresoLibre(prefs.horaIngreso), [prefs.horaIngreso]);
+  useEffect(()=> setHoraEgresoLibre (prefs.horaEgreso ), [prefs.horaEgreso ]);
+  const HORA_INGRESO = prefs.fijoIngreso ? prefs.horaIngreso : horaIngresoLibre;
+  const HORA_EGRESO  = prefs.fijoEgreso  ? prefs.horaEgreso  : horaEgresoLibre;
+  const horaToHour = (hhmm) => parseInt(String(hhmm).split(':')[0], 10) || 0;
+  const H_IN  = horaToHour(HORA_INGRESO);
+  const H_OUT = horaToHour(HORA_EGRESO);
 
   const cabanas = useContext(CabanasContext);
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Prefill al entrar con state (editar o crear desde otra pantalla)
   useEffect(() => {
-    if (location.state) {
-      const r = location.state;
-      if (r.id) {
-        setEditando(true);
-        setReservaId(r.id);
-      }
+    if (!location.state) return;
+    const r = location.state;
 
-      if (r.cabana?.id) {
-        setCabana(String(r.cabana.id));
-      } else if (r.cabana_id) {
-        setCabana(String(r.cabana_id));
-      } else if (typeof r.cabana === 'string' && cabanas.length > 0) {
-        const encontrada = cabanas.find(c => c.nombre === r.cabana);
-        if (encontrada) {
-          setCabana(String(encontrada.id));
-        }
-      }
-
-      function parsearFechaLocal(fechaStr) {
-        const soloFecha = fechaStr.includes('T') ? fechaStr.split('T')[0] : fechaStr;
-        const [año, mes, dia] = soloFecha.split('-');
-        return new Date(Number(año), Number(mes) - 1, Number(dia) - 1);
-      }
-
-
-      setCliente(r.cliente || '');
-      setDescripcion(r.descripcion || '');
-      setFechaInicio(r.fecha_inicio ? parsearFechaLocal(r.fecha_inicio) : null);
-      setFechaFin(r.fecha_fin ? parsearFechaLocal(r.fecha_fin) : null);
-      setCostoTotal(r.costo_total || '');
-      setSena(r.sena || 0);
-      setAdicionales(r.adicionales || []);
+    if (r.id) {
+      setEditando(true);
+      setReservaId(r.id);
     }
-  }, [location.state]);
 
+    if (r.cabana?.id) {
+      setCabana(String(r.cabana.id));
+    } else if (r.cabana_id) {
+      setCabana(String(r.cabana_id));
+    } else if (typeof r.cabana === 'string' && cabanas.length > 0) {
+      const encontrada = cabanas.find(c => c.nombre === r.cabana);
+      if (encontrada) setCabana(String(encontrada.id));
+    }
+
+    function parsearFechaLocal(fechaStr) {
+      const soloFecha = fechaStr.includes('T') ? fechaStr.split('T')[0] : fechaStr;
+      const [año, mes, dia] = soloFecha.split('-');
+      return new Date(Number(año), Number(mes) - 1, Number(dia));
+    }
+
+    setCliente(r.cliente || '');
+    setDescripcion(r.descripcion || '');
+    setFechaInicio(r.fecha_inicio ? parsearFechaLocal(r.fecha_inicio) : null);
+    setFechaFin(r.fecha_fin ? parsearFechaLocal(r.fecha_fin) : null);
+    setCostoTotal(r.costo_total || '');
+    setSena(r.sena || 0);
+    setAdicionales(r.adicionales || []);
+  }, [location.state, cabanas]);
+
+  // Traer reservas de la cabaña seleccionada (para disponibilidad)
   useEffect(() => {
     if (!cabana) return;
-    fetch(`${import.meta.env.VITE_API_URL}/api/reservas?cabana_id=${cabana}`)
-      .then(res => res.json())
+    const ac = new AbortController();
+
+    fetch(`${API}/api/reservas?cabana_id=${cabana}`, {
+      credentials: 'include',            // ← NECESARIO para sesión
+      signal: ac.signal,
+    })
+      .then(async res => {
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err?.message || `Error ${res.status}`);
+        }
+        return res.json();
+      })
       .then(data => {
-        setReservasExistentes(data);
+        setReservasExistentes(Array.isArray(data) ? data : []);
         const estado = {};
 
-        data
+        (Array.isArray(data) ? data : [])
           .filter(r => !editando || r.id !== reservaId)
           .forEach(r => {
             const inicio = new Date(r.fecha_inicio);
             const fin = new Date(r.fecha_fin);
             const rInicio = new Date(inicio);
             const rFin = new Date(fin);
-            rInicio.setHours(14, 0, 0, 0);
-            rFin.setHours(10, 0, 0, 0);
+            rInicio.setHours(H_IN, 0, 0, 0);
+            rFin.setHours(H_OUT, 0, 0, 0);
 
-            const keyInicio = rInicio.toISOString().split('T')[0];
-            const keyFin = rFin.toISOString().split('T')[0];
+            const keyLocal = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            const keyInicio = keyLocal(rInicio);
+            const keyFin    = keyLocal(rFin);
 
-            estado[keyInicio] = estado[keyInicio] === 'libre-egreso' ? 'ocupado'
+            estado[keyInicio] =
+              estado[keyInicio] === 'libre-egreso' ? 'ocupado'
               : estado[keyInicio] === 'ocupado' ? 'ocupado'
               : 'libre-ingreso';
 
-            estado[keyFin] = estado[keyFin] === 'libre-ingreso' ? 'ocupado'
+            estado[keyFin] =
+              estado[keyFin] === 'libre-ingreso' ? 'ocupado'
               : estado[keyFin] === 'ocupado' ? 'ocupado'
               : 'libre-egreso';
 
@@ -112,31 +138,50 @@ function CrearReserva() {
 
         setDiasEstado(estado);
         const ocupadas = Object.entries(estado)
-          .filter(([_, e]) => e === 'ocupado')
-          .map(([fecha]) => new Date(fecha));
+          .filter(([, e]) => e === 'ocupado')
+          .map(([ymd]) => { const [y,m,d]=ymd.split('-').map(Number); return new Date(y,m-1,d); });
         setFechasOcupadas(ocupadas);
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') {
+          console.error('❌ Error obteniendo reservas:', err);
+          setReservasExistentes([]);
+          setDiasEstado({});
+          setFechasOcupadas([]);
+        }
       });
-  }, [cabana]);
 
+    return () => ac.abort();
+  }, [cabana, editando, reservaId, H_IN, H_OUT]);
+
+  // Cargar adicionales si estoy editando (endpoint correcto)
   useEffect(() => {
     if (!editando || !reservaId) return;
+    const ac = new AbortController();
 
-    fetch(`${import.meta.env.VITE_API_URL}/api/adicionales/${reservaId}`)
+    fetch(`${API}/api/adicionales/${reservaId}`, {
+      credentials: 'include',            // ← también autenticado
+      signal: ac.signal,
+    })
       .then(res => res.json())
       .then(data => {
-        const adicionalesConFlag = data.map(a => ({
+        const adicionalesConFlag = (Array.isArray(data) ? data : []).map(a => ({
           ...a,
           fecha_pago: a.fecha_pago?.split('T')[0],
-          guardado: true
+          guardado: true,
         }));
         setAdicionales(adicionalesConFlag);
       })
       .catch(err => {
-        console.error('❌ Error al obtener adicionales:', err);
+        if (err.name !== 'AbortError') {
+          console.error('❌ Error al obtener adicionales:', err);
+        }
       });
+
+    return () => ac.abort();
   }, [editando, reservaId]);
 
-  // 🔁 Carga cotizaciones dólar
+  // Cotizaciones dólar
   useEffect(() => {
     async function obtenerDolares() {
       try {
@@ -156,7 +201,6 @@ function CrearReserva() {
         console.error('❌ Error al obtener cotizaciones:', err);
       }
     }
-
     obtenerDolares();
   }, []);
 
@@ -175,32 +219,29 @@ function CrearReserva() {
       setMensaje('Seleccioná ambas fechas');
       return false;
     }
-
     if (fechaInicio > fechaFin) {
       setMensaje('La fecha de ingreso no puede ser posterior a la de egreso');
       return false;
     }
-
     if (parseFloat(costoTotal) <= 0) {
       setMensaje('El costo total debe ser mayor a cero');
       return false;
     }
-
     if (parseFloat(sena) > parseFloat(costoTotal)) {
       setMensaje('La seña no puede ser mayor al costo total');
       return false;
     }
 
-    const ingreso = new Date(fechaInicio);
-    ingreso.setHours(14, 0, 0, 0);
-    const egreso = new Date(fechaFin);
-    egreso.setHours(10, 0, 0, 0);
+    const ingreso = new Date(fechaInicio); 
+    ingreso.setHours(H_IN, 0, 0, 0);
+    const egreso  = new Date(fechaFin);    
+    egreso.setHours(H_OUT, 0, 0, 0);
 
     for (const r of reservasExistentes.filter(r => !editando || r.id !== reservaId)) {
-      const rIngreso = new Date(r.fecha_inicio);
-      rIngreso.setHours(14, 0, 0, 0);
-      const rEgreso = new Date(r.fecha_fin);
-      rEgreso.setHours(10, 0, 0, 0);
+      const rIngreso = new Date(r.fecha_inicio); 
+      rIngreso.setHours(H_IN, 0, 0, 0);
+      const rEgreso  = new Date(r.fecha_fin);    
+      rEgreso.setHours(H_OUT, 0, 0, 0);
 
       if (
         (ingreso >= rIngreso && ingreso < rEgreso) ||
@@ -222,48 +263,44 @@ function CrearReserva() {
     if (!validarReserva()) return;
 
     setGuardando(true);
-    setMensaje('Cargando reserva...');
 
-    function formatearFechaLocal(fecha) {
-      const corregida = new Date(fecha);
-      corregida.setDate(corregida.getDate() + 1); // 🔧 para evitar desfase
-      const año = corregida.getFullYear();
-      const mes = String(corregida.getMonth() + 1).padStart(2, '0');
-      const dia = String(corregida.getDate()).padStart(2, '0');
-      return `${año}-${mes}-${dia}`;
-    }
+  function formatearFechaLocal(d) {
+    const y = d.getFullYear();
+    const m = d.getMonth();
+    const day = d.getDate();
+    return new Date(Date.UTC(y, m, day)).toISOString().slice(0, 10);
+  }
 
     const body = {
       cliente,
       descripcion,
-      cabana_id: cabana,
+      cabana_id: Number(cabana),
       fecha_inicio: formatearFechaLocal(fechaInicio),
       fecha_fin: formatearFechaLocal(fechaFin),
-      hora_inicio: '14',
-      hora_fin: '10',
+      hora_inicio: Number(H_IN),
+      hora_fin: Number(H_OUT),
       costo_total: parseFloat(costoTotal),
       sena: parseFloat(sena),
-      adicionales
+      adicionales,
     };
 
     try {
-      const url = editando
-        ? `${import.meta.env.VITE_API_URL}/api/reservas/${reservaId}`
-        : `${import.meta.env.VITE_API_URL}/api/reservas`;
+      const url = editando ? `${API}/api/reservas/${reservaId}` : `${API}/api/reservas`;
       const metodo = editando ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
         method: metodo,
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',         
         body: JSON.stringify(body),
       });
 
       if (res.ok) {
         toast.success('Reserva guardada correctamente');
-        setTimeout(() => navigate('/home'), 2000);
+        setTimeout(() => navigate('/home'), 1500);
       } else {
-        const error = await res.json();
-        toast.error(`${error.message}`);
+        const error = await res.json().catch(() => ({}));
+        toast.error(error.message || 'Error al guardar la reserva');
         setMensaje('');
         setGuardando(false);
       }
@@ -277,99 +314,157 @@ function CrearReserva() {
 
   return (
     <>
-      <div><BotonVolver /></div>
-      <div className="reserva-container">
-        <h2>{editando ? 'Editar Reserva' : 'Agregar Nueva Reserva'}</h2>
-        <form onSubmit={handleSubmit}>
-          <label>Cliente</label>
-          <input value={cliente} onChange={e => setCliente(e.target.value)} required />
+      <div className="reserva__wrap">
+        <div className="reserva__header">
+          <BotonVolver />
+        </div>
 
-          <label>Descripcion (opcional)</label>
-          <input value={descripcion} onChange={e => setDescripcion(e.target.value)} />
+        <div className="card card--lg reserva__card">
+          <h2 className="reserva__title">{editando ? 'Editar Reserva' : 'Agregar Nueva Reserva'}</h2>
 
-          <label>Cabaña</label>
-          <SelectorCabana
-            cabanas={cabanas}
-            cabanaSeleccionada={cabana}
-            onChange={value => {
-              setCabana(String(value));
-              setFechaInicio(null);
-              setFechaFin(null);
-              setMensaje('');
-            }}
-          />
+          <form className="reserva__form" onSubmit={handleSubmit}>
+            {/* Cliente */}
+            <div className="form-row">
+              <label>Cliente</label>
+              <input className="input" value={cliente} onChange={e => setCliente(e.target.value)} required />
+            </div>
 
-          <CalendarioReserva
-            label="Fecha Ingreso"
-            value={fechaInicio}
-            onChange={setFechaInicio}
-            fechasOcupadas={fechasOcupadas}
-            diasEstado={diasEstado}
-          />
+            {/* Descripción */}
+            <div className="form-row">
+              <label>Descripción (opcional)</label>
+              <input className="input" value={descripcion} onChange={e => setDescripcion(e.target.value)} />
+            </div>
 
-          <CalendarioReserva
-            label="Fecha Egreso"
-            value={fechaFin}
-            onChange={setFechaFin}
-            fechasOcupadas={fechasOcupadas}
-            diasEstado={diasEstado}
-          />
+            {/* Cabaña */}
+            <div className="form-row">
+              <label>Cabaña</label>
+              <SelectorCabana
+                cabanas={cabanas}
+                cabanaSeleccionada={cabana}
+                onChange={value => {
+                  setCabana(String(value));
+                  setFechaInicio(null);
+                  setFechaFin(null);
+                  setMensaje('');
+                }}
+              />
+            </div>
 
-          {cotizaciones && (
-            <>
-              <label>Reserva en Dólares (opcional)</label>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <input
-                  type="number"
-                  placeholder="Monto en USD"
-                  value={dolares.montoUSD}
-                  onChange={e => setDolares({ ...dolares, montoUSD: e.target.value })}
-                  style={{ flex: 1 }}
+            {/* Ingreso: fecha + hora fija */}
+            <div className="form-row form-row--2">
+              <div>
+                <CalendarioReserva
+                  label="Fecha Ingreso"
+                  value={fechaInicio}
+                  onChange={setFechaInicio}
+                  fechasOcupadas={fechasOcupadas}
+                  diasEstado={diasEstado}
                 />
-                <select
-                  value={dolares.tipoCambio}
-                  onChange={e => setDolares({ ...dolares, tipoCambio: e.target.value })}
-                  style={{ flex: 1 }}
-                >
-                  <option value="blue_venta">
-                    Blue Venta (${cotizaciones.blue_venta.toLocaleString('es-AR')})
-                  </option>
-                  <option value="blue_compra">
-                    Blue Compra (${cotizaciones.blue_compra.toLocaleString('es-AR')})
-                  </option>
-                  <option value="oficial_venta">
-                    Oficial Venta (${cotizaciones.oficial_venta.toLocaleString('es-AR')})
-                  </option>
-                  <option value="oficial_compra">
-                    Oficial Compra (${cotizaciones.oficial_compra.toLocaleString('es-AR')})
-                  </option>
-                </select>
               </div>
-              <small style={{ fontStyle: 'italic', color: 'gray' }}>
-                Se actualizará el Costo Total automáticamente
-              </small>
-            </>
-          )}
+              <div>
+                <label>Hora Ingreso</label>
+                  <input   
+                    className="input"
+                    type="time"
+                    step="60"
+                    value={HORA_INGRESO}
+                    onChange={e => setHoraIngresoLibre(e.target.value)}
+                    disabled={prefs.fijoIngreso}
+                  />
+              </div>
+            </div>
 
-          <label>Costo Total</label>
-          <InputDinero value={costoTotal} onChange={setCostoTotal} required />
+            {/* Egreso: fecha + hora fija */}
+            <div className="form-row form-row--2">
+              <div>
+                <CalendarioReserva
+                  label="Fecha Egreso"
+                  value={fechaFin}
+                  onChange={setFechaFin}
+                  fechasOcupadas={fechasOcupadas}
+                  diasEstado={diasEstado}
+                />
+              </div>
+              <div>
+                <label>Hora Ingreso</label>
+                  <input   
+                    className="input"
+                    type="time"
+                    step="60"
+                    value={HORA_EGRESO}
+                    onChange={e => setHoraEgresoLibre(e.target.value)}
+                    disabled={prefs.fijoEgreso}
+                  />
+              </div>
+            </div>
 
-          <label>Seña</label>
-          <InputDinero value={sena} onChange={setSena} />
+            {/* Reserva en USD */}
+            {cotizaciones && (
+              <div className="form-row">
+                <label>Reserva en Dólares (opcional)</label>
+                <div className="form-row--2">
+                  <input
+                    className="input"
+                    type="number"
+                    placeholder="Monto en USD"
+                    value={dolares.montoUSD}
+                    onChange={e => setDolares({ ...dolares, montoUSD: e.target.value })}
+                  />
+                  <select
+                    className="select"
+                    value={dolares.tipoCambio}
+                    onChange={e => setDolares({ ...dolares, tipoCambio: e.target.value })}
+                  >
+                    <option value="blue_venta">Blue Venta (${cotizaciones.blue_venta.toLocaleString('es-AR')})</option>
+                    <option value="blue_compra">Blue Compra (${cotizaciones.blue_compra.toLocaleString('es-AR')})</option>
+                    <option value="oficial_venta">Oficial Venta (${cotizaciones.oficial_venta.toLocaleString('es-AR')})</option>
+                    <option value="oficial_compra">Oficial Compra (${cotizaciones.oficial_compra.toLocaleString('es-AR')})</option>
+                  </select>
+                </div>
+                <p className="muted" style={{margin: '4px 0 0'}}>Se actualizará el Costo Total automáticamente</p>
+              </div>
+            )}
 
-          <AdicionalesForm
-            reservaId={editando ? reservaId : null}
-            adicionales={adicionales}
-            setAdicionales={setAdicionales}
-          />
+            {/* Costo total + Seña */}
+            <div className="form-row form-row--2">
+              <div>
+                <label>Costo Total</label>
+                <InputDinero value={costoTotal} onChange={setCostoTotal} required />
+              </div>
+              <div>
+                <label>Seña</label>
+                <InputDinero value={sena} onChange={setSena} />
+              </div>
+            </div>
 
-          <button type="submit" disabled={guardando}>
-            {guardando ? 'Guardando...' : 'Guardar Reserva'}
-          </button>
-        </form>
+            {/* Adicionales */}
+            <AdicionalesForm
+              reservaId={editando ? reservaId : null}
+              adicionales={adicionales}
+              setAdicionales={setAdicionales}
+            />
 
-        <div className="mensaje">{mensaje}</div>
+            {/* Guardar */}
+            <div className="reserva__actions">
+              <button className="btn btn--primary btn--block" type="submit" disabled={guardando}>
+                {guardando ? 'Guardando…' : 'Guardar Reserva'}
+              </button>
+            </div>
+
+            {/* Mensajes (si querés mantenerlos) */}
+            {mensaje && <div className="mensaje">{mensaje}</div>}
+          </form>
+        </div>
       </div>
+
+      {/* Loader global mientras guardás */}
+      <Backdrop
+        sx={{ color: '#fff', zIndex: 2000, backdropFilter: 'blur(2px)' }} 
+        open={guardando}
+      >
+        <CircularProgress color="inherit" />
+      </Backdrop>
+
       <ToastContainer position="top-center" autoClose={3000} />
     </>
   );

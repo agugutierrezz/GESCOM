@@ -1,0 +1,50 @@
+/* Lienzo centrado */
+.detalle__wrap{
+  min-height: 100vh;
+  background: var(--bg);
+  display: grid;
+  place-items: start center;
+  padding: 24px;
+}
+
+/* Columna centrada */
+.detalle__container{
+  width: min(980px, 94vw);
+  display: grid;
+  gap: 14px;
+}
+
+/* Título */
+.detalle__title{
+  margin: 0;
+  text-align: center;
+  color: var(--text);
+  font-size: 2rem;
+}
+
+/* Card y contenido */
+.detalle__card{ }
+.detalle__section{
+  display: grid;
+  gap: 8px;
+}
+
+.detalle__row{
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+.detalle__row strong{ color: var(--text); }
+
+/* Adicionales */
+.detalle__adics{
+  margin-top: 8px;
+  padding-left: 18px;
+}
+.detalle__adics li{ margin: 6px 0; }
+
+/* Acciones */
+.detalle__actions{
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 10px;
+}

@@ -1,0 +1,26 @@
+.home__wrap{
+  min-height: 80vh;
+  display: grid;
+  place-content: center;   /* centra vertical y horizontal */
+  justify-items: center;
+  gap: 64px;               /* 👈 separación título ↔ card (igual que login) */
+  padding: 24px;
+}
+
+.home__card{
+  width: min(500px, 100vw); /* 👈 más ancha */
+}
+
+.home__title{
+  margin: 0;
+  text-align: center;
+  font-size: 2rem;         /* un poquito más grande */
+  color: var(--text);
+}
+
+.home__actions{
+  display: grid;
+  gap: 16px;
+}
+
+.home__actions .btn{ font-weight: 600; }

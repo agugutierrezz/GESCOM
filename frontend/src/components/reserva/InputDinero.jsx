@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import TextField from '@mui/material/TextField';
 
-function InputDinero({ value, onChange, label='' }) {
+function InputDinero({ value, onChange, label = '', placeholder, className = '' }) {
   const [texto, setTexto] = useState('');
 
   const formatear = (num) => {
@@ -16,32 +15,28 @@ function InputDinero({ value, onChange, label='' }) {
     setTexto(formatear(value));
   }, [value]);
 
-  const desformatear = (str) => {
-    return str.replace(/\./g, '').replace(',', '.').replace(/[^\d.]/g, '');
-  };
+  const desformatear = (str) =>
+    str.replace(/\./g, '').replace(',', '.').replace(/[^\d.]/g, '');
 
   const handleChange = (e) => {
     const crudo = desformatear(e.target.value);
     const numero = parseFloat(crudo);
-
-    if (!isNaN(numero)) {
-      onChange(numero);
-    } else {
-      onChange('');
-    }
-
+    onChange(!isNaN(numero) ? numero : '');
     setTexto(e.target.value);
   };
 
+  const ph = placeholder || label || '';
+
   return (
     <input
-        value={texto}
-        onChange={handleChange}
-        label={label}
-        fullWidth
-        size="medium"
-        inputMode="decimal"
-      />
+      className={`input ${className}`}
+      value={texto}
+      onChange={handleChange}
+      placeholder={ph}                     
+      aria-label={ph || 'Monto'}
+      inputMode="decimal"
+      type="text"
+    />
   );
 }
 

@@ -1,0 +1,127 @@
+/* bloque del calendario: título + input con el mismo gap que el resto */
+.calendario-reserva-wrapper{ display:grid; gap:8px; }
+
+/* ★ alineación con label normal */
+.calendario-reserva-wrapper .calendario-label h3{
+  margin: 0;             /* ← quita el margen superior que lo “baja” */
+  font-size: 1rem;
+  color: var(--text);
+}
+
+/* el input de flatpickr se comporta como los demás */
+.flatpickr-input.input{
+  display:block;
+  width:100%;
+  padding:12px 14px !important;   /* mismo padding que .input */
+  border-radius:14px;              /* por si el theme base lo pisa */
+}
+
+/* ====== CONTENEDOR / CABECERA ====== */
+.flatpickr-calendar{
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border: var(--border) !important;
+  box-shadow: var(--shadow-mid) !important;
+}
+.flatpickr-months,
+.flatpickr-weekdays{
+  background: var(--bg-elev-2) !important;    /* ★ fondo cabecera/semana */
+  border-bottom: var(--border) !important;
+}
+.flatpickr-current-month .cur-month,
+.flatpickr-current-month .numInputWrapper input,
+.flatpickr-weekday{
+  color: var(--text) !important;               /* ★ color texto cabecera */
+}
+.flatpickr-prev-month svg, .flatpickr-next-month svg{
+  fill: var(--text-dim) !important;            /* ★ flechas */
+}
+.flatpickr-prev-month:hover svg, .flatpickr-next-month:hover svg{
+  fill: var(--text) !important;
+}
+
+/* ★ Oculta totalmente los días que NO pertenecen al mes visible */
+.flatpickr-day.prevMonthDay,
+.flatpickr-day.nextMonthDay{
+  visibility: hidden;          /* se reservan celdas, pero no se ven */
+  pointer-events: none;
+  opacity: 0;
+  background: transparent !important;
+  border-color: transparent !important;
+  color: transparent !important;
+}
+
+
+/* ====== DÍAS BASE ====== */
+.flatpickr-day{
+  background: var(--bg-elev-1) !important;
+  color: var(--text) !important;
+  border-radius: 8px !important;
+  border: 1px solid transparent !important;
+}
+.flatpickr-day:hover{
+  background: var(--bg-elev-2) !important;
+}
+
+/* Selección / rango */
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange{
+  background: var(--btn-primary) !important;
+  border-color: var(--btn-primary-stroke) !important;
+  color: #fff !important;
+}
+.flatpickr-day.inRange{
+  background: rgba(48,87,134,.22) !important;  /* ★ franja de rango */
+  color: var(--text) !important;
+}
+
+/* ====== ESTADOS PROPIOS (bien legibles) ====== */
+/* OCUAPDO: rojo borgoña sólido */
+.flatpickr-day.ocupado{
+  background: var(--btn-danger) !important;
+  color: #fff !important;
+  opacity: .99 !important;
+  cursor: not-allowed !important;
+}
+
+/* PARCIAL: ámbar más oscuro para que el número se lea */
+.flatpickr-day.parcial{
+  background: rgba(197,155,58, .90) !important;  /* ★ ajustá opacidad/tono si querés */
+  color: #11131a !important;                      /* texto oscuro sobre ámbar */
+}
+
+/* DISPONIBLE: verde sólido oscuro con texto blanco */
+.flatpickr-day.disponible{
+  background: rgba(47,158,105, .90) !important;   /* ★ más o menos intenso */
+  color: #fff !important;
+}
+
+/* PASADO: gris oscuro */
+.flatpickr-day.pasado{
+  background: #454957 !important;                 /* ★ tono de gris */
+  color: #cfd3df !important;
+  cursor: not-allowed !important;
+}
+
+/* Ocultar el input cuando el calendario es inline/solo-lectura */
+.flatpickr-wrapper-visual > input {
+  display: none !important;
+}
+
+/* Opcional: compacto y dark del calendario */
+.flatpickr-calendar {
+  background: var(--surface);
+  border: var(--border);
+  box-shadow: var(--shadow-low);
+}
+.flatpickr-months { 
+  background: var(--bg-elev-2);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.flatpickr-current-month .cur-year,
+.flatpickr-monthDropdown-months,
+.flatpickr-weekday { color: var(--text-dim); }
+.flatpickr-day { background: var(--bg-elev-1); color: var(--text); border-radius: 10px; }
+.flatpickr-day:hover { filter: brightness(1.06); }
+

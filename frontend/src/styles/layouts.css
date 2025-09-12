@@ -1,0 +1,11 @@
+.header{
+  position:sticky;top:0;z-index:40;
+  background:rgba(15,18,32,.65); backdrop-filter: blur(8px);
+  border-bottom: var(--border);
+}
+.header__wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700}
+.theme-toggle{display:inline-flex;align-items:center;gap:8px}
+.theme-toggle input{appearance:none;width:44px;height:26px;border-radius:999px;background:var(--bg-elev-2);position:relative;cursor:pointer;border:var(--border)}
+.theme-toggle input::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:999px;background:#fff;transition:left .2s ease}
+.theme-toggle input:checked::after{left:21px}

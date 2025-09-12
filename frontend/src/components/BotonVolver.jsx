@@ -6,7 +6,7 @@ function BotonVolver() {
   const navigate = useNavigate();
 
   return (
-    <IconButton onClick={() => navigate(-1)} aria-label="volver">
+    <IconButton onClick={() => navigate(-1)} aria-label="volver" sx={{ color: 'var(--text)' }}  >
       <ArrowBackIcon />
     </IconButton>
   );

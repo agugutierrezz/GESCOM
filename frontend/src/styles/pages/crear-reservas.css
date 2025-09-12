@@ -1,0 +1,93 @@
+.reserva__wrap{
+  min-height: 100vh;
+  display: grid;
+  gap: 20px;
+  padding: 24px;
+  background: var(--bg);
+}
+
+.reserva__header{
+  display:flex;align-items:center;gap:8px;
+}
+
+.reserva__card{
+  width: min(960px, 96vw);             /* ← ★ más ancho */
+  margin: 0 auto;
+}
+
+.reserva__title{
+  margin: 0 0 24px;
+  font-size: 1.8rem;
+  color: var(--text);
+}
+
+/* Form grid */
+.reserva__form{ display:grid; gap:16px; }
+
+.form-row{ display:grid; gap:8px; }
+/* === Alinear columnas de las filas 2-col (Fecha | Hora) === */
+.form-row--2{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 18px;                 /* ← separa las columnas (ajustá a gusto) */
+  row-gap: 12px;
+}
+.form-row--2 > div{
+  display: grid;
+  align-content: start;             /* ← alinea el contenido al tope (evita “bajada”) */
+  gap: 10px;                        /* ← separación label ↔ input (ajustá 8–14px) */
+}
+
+/* === Unificamos estilo de “labels” en todo el formulario === */
+.form-row label,
+.calendario-reserva-wrapper .calendario-label h3{
+  margin: 0;                        /* ← quita márgenes que desalineaban */
+  font-size: 1rem;                  /* ← mismo tamaño que el resto */
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* (opcional) aspecto del time readonly igual al resto */
+.input--readonly{
+  opacity: .9;
+  cursor: not-allowed;
+}
+
+@media (max-width: 720px){
+  .form-row--2{ grid-template-columns: 1fr; }
+}
+
+label{ color: var(--text); font-weight:600; }
+
+.input--readonly{ opacity:.85; cursor:not-allowed; }
+
+/* Botón guardar */
+.reserva__actions{ margin-top: 8px; }
+
+.adicionales{ display:grid; gap:12px; }
+
+.adicionales__head{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; margin-top:4px;
+}
+.adicionales__head h4{ margin:0; color:var(--text); }
+
+.adicional-item{
+  background: var(--bg-elev-1);
+  border: var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-low);
+  padding: 12px;
+  display: grid; gap: 10px;
+}
+.adicional-grid{
+  display: grid; gap: 10px;
+  grid-template-columns: 1fr 1fr 2fr;      /* Monto | Fecha | Descripción */
+}
+@media (max-width: 960px){
+  .adicional-grid{ grid-template-columns: 1fr; }
+}
+
+.adicional-actions{
+  display:flex; gap:8px; justify-content:flex-end;
+}

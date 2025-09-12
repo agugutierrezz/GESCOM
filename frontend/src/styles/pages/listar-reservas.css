@@ -1,0 +1,91 @@
+/* Lienzo general */
+.listar__wrap{
+  min-height: 80vh;
+  background: var(--bg);
+  display: grid;
+  place-items: start center;     /* ← centra la columna */
+  padding: 20px;
+}
+
+/* Columna centrada y con ancho máximo */
+.listar__container{
+  width: min(720px, 72vw);      /* ← ajustá 980 si querés más/menos ancho */
+  display: grid;
+  gap: 14px;
+}
+
+
+/* Header a 3 columnas: back | título centrado | spacer */
+.listar__header{
+  display:grid;
+  place-items: center;
+}
+.listar__title{
+  margin:0; text-align:center;
+  color:var(--text); font-size:1.8rem; 
+}
+
+/* Siempre en columna: búsqueda arriba, checkbox abajo */
+.listar__controls{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:12px;
+  align-items:start;
+  width:100%;
+}
+.listar__search{ width:100%; }
+.listar__checkbox{
+  display:flex; align-items:center; gap:8px;
+  color:var(--text);
+}
+.listar__checkbox input{ accent-color:var(--btn-primary); }
+
+/* Lista */
+.listar__list{ display: grid; gap: 12px; }
+.listar__empty{ color: var(--text-dim); }
+
+/* Error */
+.listar__error{
+  color: #ffb4b4;
+  background: rgba(255, 80, 80, .08);
+  border: 1px solid rgba(255, 80, 80, .25);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+/* Loader a pantalla completa, sin mostrar nada detrás */
+.listar__loading{
+  min-height: 100vh;
+  background: var(--bg);     /* ← color liso, sin blur */
+  display: grid;
+  place-items: center;
+}
+
+/* --- Responsive --- */
+@media (max-width: 680px){
+  .listar__controls{
+    grid-template-columns: 1fr;   /* buscador arriba, checkbox abajo */
+    justify-items: start;
+  }
+  .listar__title{ font-size: 1.6rem; }
+}
+
+/* Botón Volver fijo, superpuesto arriba-izquierda */
+.back-fixed{
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 1100;          /* por encima del contenido */
+}
+
+/* opcional: hit area, hover, etc. */
+.back-fixed .MuiIconButton-root{
+  color: var(--text);
+  background: transparent;
+  transition: background .15s ease;
+}
+.back-fixed .MuiIconButton-root:hover{
+  background: rgba(255,255,255,.06);
+  backdrop-filter: blur(2px);
+  border-radius: 999px;
+}

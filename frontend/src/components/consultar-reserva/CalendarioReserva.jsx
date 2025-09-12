@@ -1,6 +1,6 @@
 import Flatpickr from 'react-flatpickr';
 import { Spanish } from 'flatpickr/dist/l10n/es.js';
-import 'flatpickr/dist/themes/material_blue.css';
+import 'flatpickr/dist/flatpickr.css'; 
 
 function CalendarioReserva({
   label,
@@ -14,19 +14,32 @@ function CalendarioReserva({
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
 
+  function keyLocal(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`; // YYYY-MM-DD en hora local
+  }
+
   const options = {
     disable: [
       function (date) {
-        const key = date.toISOString().split('T')[0];
+        const key = keyLocal(date);
         const estado = diasEstado?.[key];
         return date < hoy || estado === 'ocupado';
       }
     ],
     dateFormat: 'd/m/Y',
     locale: Spanish,
+    static: true,                
+    onReady: (_, __, fp) => {    
+      if (soloLectura && fp && fp._input) {
+        fp._input.style.display = 'none';
+      }
+    },
     onDayCreate: (_, __, ___, dayElem) => {
       const date = dayElem.dateObj;
-      const key = date.toISOString().split('T')[0];
+      const key = keyLocal(date);
       const estado = diasEstado?.[key];
 
       if (soloLectura && mesFijo instanceof Date) {
@@ -48,7 +61,6 @@ function CalendarioReserva({
       }
     },
     disableMobile: true,
-    static: true,
     monthSelectorType: 'static',
     minDate: 'today',
     maxDate: new Date().fp_incr(365),
@@ -88,6 +100,7 @@ function CalendarioReserva({
       )}
       <div className={soloLectura ? 'flatpickr-wrapper-visual' : ''}>
         <Flatpickr
+          className={soloLectura ? undefined : 'input'} 
           value={value}
           onChange={soloLectura ? () => {} : date => {
             const fija = new Date(date[0]);

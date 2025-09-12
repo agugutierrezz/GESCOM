@@ -1,29 +1,76 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import BotonVolver from '../components/BotonVolver';
+import ScreenLoader from '../components/ScreenLoader';
 import jsPDF from 'jspdf/dist/jspdf.umd';
 import 'jspdf-autotable';
 import logo from '/images/logo.png';
+import '../styles/pages/detalle-reserva.css';
 
 function ReservaDetalle() {
   const { id } = useParams();
   const [reserva, setReserva] = useState(null);
   const [adicionales, setAdicionales] = useState([]);
-  
+  const [userId, setUserId] = useState(null);
+  const [loading, setLoading] = useState(true);   // ← nuevo
+  const API = import.meta.env.VITE_API_URL;
 
+  // Reserva + adicionales
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/api/reservas/${id}`)
-      .then(res => res.json())
-      .then(data => setReserva(data));
+    const ac = new AbortController();
+    (async () => {
+      try {
+        const [rReserva, rAdic] = await Promise.all([
+          fetch(`${API}/api/reservas/${id}`, { credentials: 'include', signal: ac.signal }),
+          fetch(`${API}/api/adicionales/${id}`, { credentials: 'include', signal: ac.signal }),
+        ]);
 
-    fetch(`${import.meta.env.VITE_API_URL}/api/adicionales/${id}`)
-      .then(res => res.json())
-      .then(data => setAdicionales(data));
+        if (!rReserva.ok) {
+          const err = await rReserva.json().catch(() => ({}));
+          throw new Error(err?.message || `Error ${rReserva.status} al cargar la reserva`);
+        }
+        const reservaData = await rReserva.json();
+        setReserva(reservaData);
+
+        if (rAdic.ok) {
+          const adicData = await rAdic.json();
+          setAdicionales(Array.isArray(adicData) ? adicData : []);
+        } else {
+          setAdicionales([]);
+        }
+      } catch (e) {
+        if (e.name !== 'AbortError') {
+          console.error('❌ Error cargando detalle de reserva:', e);
+          setReserva(null);
+          setAdicionales([]);
+        }
+      } finally {
+        setLoading(false);       // ← cierro loader
+      }
+    })();
+    return () => ac.abort();
   }, [id]);
 
-    const descargarPDF = async () => {
-    if (!reserva) return;
+  // Usuario
+  useEffect(() => {
+    const ac = new AbortController();
+    (async () => {
+      try {
+        const r = await fetch(`${API}/api/usuarios/me`, { credentials: 'include', signal: ac.signal });
+        if (r.ok) {
+          const u = await r.json();
+          setUserId(Number(u.id) || null);
+        } else {
+          setUserId(null);
+        }
+      } catch { setUserId(null); }
+    })();
+    return () => ac.abort();
+  }, []);
 
+  const descargarPDF = async () => {
+    if (userId !== 1) return;
+    if (!reserva) return;
     const doc = new jsPDF();
 
     // Logo más grande y centrado
@@ -107,34 +154,76 @@ function ReservaDetalle() {
     y += 8;
 
     doc.save(`Reserva_${reserva.cliente}.pdf`);
-    };
+  };
 
+  if (loading) return <ScreenLoader />;
 
-  if (!reserva) return <p>Cargando reserva...</p>;
+  if (!reserva) {
+    return (
+      <>
+        <div className="back-fixed"><BotonVolver /></div>
+        <div className="detalle__wrap">
+          <div className="detalle__container">
+            <h2 className="detalle__title">Detalle de Reserva</h2>
+            <div className="card card--lg detalle__card">
+              <p style={{color:'#ffb4b4'}}>No se pudo cargar la reserva.</p>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  const fmt = (n) => Number(n).toLocaleString('es-AR');
+  const fdate = (d) => new Date(d).toLocaleDateString('es-AR');
 
   return (
-    <><BotonVolver />
-    <div className="reserva-container">
-      <h2>Detalle de Reserva</h2>
-      <p><strong>Cliente:</strong> {reserva.cliente}</p>
-      <p><strong>Descripción:</strong> {reserva.descripcion || '---'}</p>
-      <p><strong>Cabaña:</strong> {reserva.cabana?.nombre}</p>
-      <p><strong>Desde:</strong> {new Date(reserva.fecha_inicio).toLocaleDateString('es-AR')}</p>
-      <p><strong>Hasta:</strong> {new Date(reserva.fecha_fin).toLocaleDateString('es-AR')}</p>
-      <p><strong>Costo Total:</strong> ${Number(reserva.costo_total).toLocaleString('es-AR')}</p>
-      <p><strong>Seña:</strong> ${Number(reserva.sena).toLocaleString('es-AR')}</p>
+    <>
+      <div className="back-fixed"><BotonVolver /></div>
+      <div className="detalle__wrap">
+        <div className="detalle__container">
+          <h2 className="detalle__title">Detalle de Reserva</h2>
 
-      <h3>Adicionales</h3>
-      {adicionales.length === 0
-        ? <p>No hay adicionales.</p>
-        : <ul>{adicionales.map((a, i) => (
-          <li key={i}>
-            ${Number(a.monto).toLocaleString('es-AR')} - {new Date(a.fecha_pago).toLocaleDateString('es-AR')} - {a.descripcion}
-          </li>
-        ))}</ul>}
+          <div className="card card--lg detalle__card">
+            <div className="detalle__section">
+              <p className="detalle__row"><strong>Cliente:</strong> {reserva.cliente}</p>
+              <p className="detalle__row"><strong>Descripción:</strong> {reserva.descripcion || '---'}</p>
+              <p className="detalle__row"><strong>Cabaña:</strong> {reserva.cabana?.nombre || '---'}</p>
+              <p className="detalle__row"><strong>Desde:</strong> {fdate(reserva.fecha_inicio)}</p>
+              <p className="detalle__row"><strong>Hasta:</strong> {fdate(reserva.fecha_fin)}</p>
+              <p className="detalle__row"><strong>Costo Total:</strong> ${fmt(reserva.costo_total)}</p>
+              <p className="detalle__row"><strong>Seña:</strong> ${fmt(reserva.sena)}</p>
+            </div>
 
-      <button onClick={descargarPDF}>📄 Descargar PDF</button>
-    </div>
+            <hr
+              style={{
+                border: 'none',
+                borderTop: '1px solid rgba(255,255,255,.08)',
+                margin: '14px 0'
+              }}
+            />
+
+            <h3 style={{margin:'0 0 4px'}}>Adicionales</h3>
+            {adicionales.length === 0 ? (
+              <p className="detalle__row" style={{color:'var(--text-dim)'}}>No hay adicionales.</p>
+            ) : (
+              <ul className="detalle__adics">
+                {adicionales.map((a,i)=>(
+                  <li key={i} className="detalle__row">
+                    ${fmt(a.monto)} — {fdate(a.fecha_pago)} — {a.descripcion || '—'}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {userId === 1 && (
+              <div className="detalle__actions">
+                <button className="btn btn--primary" onClick={descargarPDF}>📄 Descargar PDF</button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </>
   );
 }

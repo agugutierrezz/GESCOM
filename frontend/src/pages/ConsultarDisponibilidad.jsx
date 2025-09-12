@@ -1,119 +1,186 @@
-import { useEffect, useState, useRef, useContext } from 'react';
+import { useEffect, useState, useRef, useContext, useMemo } from 'react';
 import SelectorCabana from '../components/consultar-reserva/SelectorCabana';
 import ReservaResumenCard from '../components/reserva/ReservaResumenCard';
 import BotonVolver from '../components/BotonVolver';
 import CalendarioReserva from '../components/consultar-reserva/CalendarioReserva';
 import { CabanasContext } from '../context/CabanasContext';
 import html2pdf from 'html2pdf.js';
-import '../styles/reserva.css';
+import '../styles/pages/disponibilidad.css';
 
-function ConsultarDisponibilidad() {
+const API = import.meta.env.VITE_API_URL;
+const capitalizar = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+
+function parseLocalDateTime(s) {
+   if (!(typeof s === 'string')) return new Date(s);
+   // Si viene con Z o con offset (+hh:mm / -hh:mm), dejalo a Date normal
+   if (/Z|[+-]\d{2}:\d{2}$/.test(s)) return new Date(s);
+   const [datePart, timePart] = s.split('T');
+   const [y, m, d] = datePart.split('-').map(Number);
+   if (timePart) {
+     const [hh, mm = 0] = timePart.split(':').map(Number);
+     return new Date(y, m - 1, d, hh, mm, 0, 0);
+   }
+   return new Date(y, m - 1, d, 0, 0, 0, 0);
+}
+
+export default function ConsultarDisponibilidad(){
+  const cabanas = useContext(CabanasContext);
+
   const [cabana, setCabana] = useState(null);
   const [reservas, setReservas] = useState([]);
   const [diasEstado, setDiasEstado] = useState({});
   const [fechasOcupadas, setFechasOcupadas] = useState([]);
-  const calendarioRef = useRef(null);
 
-  const cabanas = useContext(CabanasContext);
-  const capitalizar = str => str.charAt(0).toUpperCase() + str.slice(1);
+  const hoy = useMemo(() => new Date(), []);
+  const [baseMonth, setBaseMonth] = useState(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
+  const [monthsToShow, setMonthsToShow] = useState(4);
+
+  const pdfRef = useRef(null);
 
   useEffect(() => {
-    if (!cabana || !cabana.id) return;
-
-    fetch(`${import.meta.env.VITE_API_URL}/api/reservas?cabana_id=${cabana.id}`)
-      .then(res => res.json())
+    if (!cabana?.id) return;
+    const ac = new AbortController();
+    fetch(`${API}/api/reservas?cabana_id=${cabana.id}`, { credentials: 'include', signal: ac.signal })
+      .then(async r => {
+        if (!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e?.message || `Error ${r.status}`); }
+        return r.json();
+      })
       .then(data => {
-        if (!Array.isArray(data)) {
-          console.error('❌ La respuesta no es un array:', data);
-          setReservas([]);
-          return;
-        }
+        if (!Array.isArray(data)){ setReservas([]); setDiasEstado({}); setFechasOcupadas([]); return; }
         setReservas(data);
+
+        // armar estados ocupados / parciales
         const estado = {};
+        const keyLocal = (d) => {
+          const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+          return `${y}-${m}-${day}`;
+        };
+        data.forEach(r=>{
+          const rIngreso = parseLocalDateTime(r.fecha_inicio); rIngreso.setHours(14,0,0,0);
+          const rEgreso  = parseLocalDateTime(r.fecha_fin);    rEgreso.setHours(10,0,0,0);
 
-        data.forEach(r => {
-          const inicio = new Date(r.fecha_inicio);
-          const fin = new Date(r.fecha_fin);
+          const kIn  = keyLocal(rIngreso);
+          const kOut = keyLocal(rEgreso);
 
-          const rInicio = new Date(inicio);
-          rInicio.setHours(14);
-          const rFin = new Date(fin);
-          rFin.setHours(10);
+          estado[kIn]  = estado[kIn]==='libre-egreso' ? 'ocupado' : (estado[kIn]==='ocupado'?'ocupado':'libre-ingreso');
+          estado[kOut] = estado[kOut]==='libre-ingreso'? 'ocupado' : (estado[kOut]==='ocupado'?'ocupado':'libre-egreso');
 
-          const keyInicio = rInicio.toISOString().split('T')[0];
-          const keyFin = rFin.toISOString().split('T')[0];
-
-          estado[keyInicio] = estado[keyInicio] === 'libre-egreso' ? 'ocupado'
-            : estado[keyInicio] === 'ocupado' ? 'ocupado'
-            : 'libre-ingreso';
-
-          estado[keyFin] = estado[keyFin] === 'libre-ingreso' ? 'ocupado'
-            : estado[keyFin] === 'ocupado' ? 'ocupado'
-            : 'libre-egreso';
-
-          let actual = new Date(rInicio);
-          actual.setDate(actual.getDate() + 1);
-          while (actual < rFin) {
-            const key = actual.toISOString().split('T')[0];
-            estado[key] = 'ocupado';
-            actual.setDate(actual.getDate() + 1);
-          }
+          const cur = new Date(rIngreso); cur.setDate(cur.getDate()+1);
+          while(cur < rEgreso){ estado[keyLocal(cur)]='ocupado'; cur.setDate(cur.getDate()+1); }
         });
-
         setDiasEstado(estado);
-
-        const ocupadas = Object.entries(estado)
-          .filter(([_, estado]) => estado === 'ocupado')
-          .map(([fecha]) => new Date(fecha));
-
-        setFechasOcupadas(ocupadas);
-      });
+        setFechasOcupadas(Object.entries(estado).filter(([,v])=>v==='ocupado').map(([k])=>new Date(k)));
+      })
+      .catch(e => { if (e.name!=='AbortError'){ console.error(e); setReservas([]); setDiasEstado({}); setFechasOcupadas([]);} });
+    return () => ac.abort();
   }, [cabana]);
 
-  const descargarPDF = () => {
-    if (!calendarioRef.current || !cabana?.nombre) return;
-    const fechaActual = new Date();
-    const formatoFecha = fechaActual.toLocaleDateString('es-AR').replaceAll('/', '-');
-    const nombreArchivo = `Disponibilidad_${cabana.nombre}_${formatoFecha}.pdf`;
+  // helpers de UI
+  const labelMes = (d) => capitalizar(d.toLocaleDateString('es-AR', { month:'long', year:'numeric' }));
+  const meses = useMemo(
+    () => Array.from({length: monthsToShow}, (_,i)=> new Date(baseMonth.getFullYear(), baseMonth.getMonth()+i, 1)),
+    [baseMonth, monthsToShow]
+  );
 
-    html2pdf().from(calendarioRef.current).set({
-      margin: 0.5,
-      filename: nombreArchivo,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, scrollX: 0, scrollY: -window.scrollY },
-      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-    }).save();
+  const descargarPDF = () => {
+    if (!pdfRef.current) return;
+    const node = pdfRef.current;
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#0f1220';
+
+    html2pdf()
+      .from(node)
+      .set({
+        margin: 0.4,
+        filename: `Disponibilidad_${cabana?.nombre || 'cabana'}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          scrollX: 0,
+          scrollY: 0,
+          backgroundColor: bg,   
+        },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+      })
+      .save();
   };
 
   return (
     <>
-      <div><BotonVolver /></div>
-      <div className="reserva-container">
-        <h2>Consultar Disponibilidad</h2>
+      <div className="listar__back"><BotonVolver /></div>
 
-        <div className="selector-cabana-container">
-          <SelectorCabana
-            cabanas={cabanas}
-            cabanaSeleccionada={cabana?.id || ''}
-            onChange={id => {
-              const seleccionada = cabanas.find(c => c.id === parseInt(id));
-              setCabana(seleccionada || null);
-              setDiasEstado({});
-              setReservas([]);
-            }}
-          />
+      <div className="disp__wrap">
+        <h2 className="disp__title">Consultar Disponibilidad</h2>
+
+        {/* CONTROLES SUPERIORES */}
+        <div className="disp__controls">
+          <div className="disp__field">
+            <label className="disp__label">Seleccionar cabaña</label>
+            <SelectorCabana
+              cabanas={cabanas}
+              cabanaSeleccionada={cabana?.id || ''}
+              onChange={(id) => {
+                const seleccionada = cabanas.find(c => c.id === parseInt(id, 10));
+                setCabana(seleccionada || null);
+                setDiasEstado({});
+                setReservas([]);
+              }}
+            />
+          </div>
+
+          <div className="disp__field">
+            <label className="disp__label">Meses a mostrar</label>
+            <select
+              className="select"
+              value={monthsToShow}
+              onChange={(e) => setMonthsToShow(Number(e.target.value))}
+            >
+              {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
         </div>
 
+        {/* MES INICIAL + NAVEGACIÓN */}
         {cabana && (
           <>
-            <div className="calendarios-mes" ref={calendarioRef}>
-              {[0, 1, 2].map(mesOffset => {
-                const hoy = new Date();
-                const fecha = new Date(hoy.getFullYear(), hoy.getMonth() + mesOffset, 1);
-                return (
+            <div className="disp__sublabel">Mes inicial</div>
+            <div className="disp__nav">
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => setBaseMonth(
+                  new Date(baseMonth.getFullYear(), baseMonth.getMonth() - 1, 1)
+                )}
+                aria-label="Mes anterior"
+              >
+                ◀
+              </button>
+
+              <div className="disp__nav-current">
+                {baseMonth.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}
+              </div>
+
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => setBaseMonth(
+                  new Date(baseMonth.getFullYear(), baseMonth.getMonth() + 1, 1)
+                )}
+                aria-label="Mes siguiente"
+              >
+                ▶
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* CALENDARIOS EN PANTALLA (2 columnas) */}
+        {cabana && (
+          <>
+            <div className="disp__grid" ref={pdfRef}>
+              {meses.map((fecha, i) => (
+                <div key={`${fecha.getFullYear()}-${fecha.getMonth()}-${i}`} className="disp__month">
                   <CalendarioReserva
-                    key={mesOffset}
-                    label={capitalizar(fecha.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }))}
+                    label={null}
                     value={null}
                     onChange={() => {}}
                     fechasOcupadas={fechasOcupadas}
@@ -121,22 +188,39 @@ function ConsultarDisponibilidad() {
                     mesFijo={fecha}
                     soloLectura={true}
                   />
-                );
-              })}
+                </div>
+              ))}
             </div>
 
-            <button onClick={descargarPDF}>Descargar calendario en PDF</button>
+            {/* CONTENEDOR OCULTO SOLO PARA PDF (mismo contenido) */}
+            <div className="disp__pdf" id="pdf-calendarios" style={{ background: 'var(--bg)' }}>
+              <div className="disp__grid disp__grid--pdf">
+                {meses.map((fecha, i) => (
+                  <div key={`pdf-${fecha.getFullYear()}-${fecha.getMonth()}-${i}`} className="disp__month">
+                    <CalendarioReserva
+                      label={null}
+                      value={null}
+                      onChange={() => {}}
+                      fechasOcupadas={fechasOcupadas}
+                      diasEstado={diasEstado}
+                      mesFijo={fecha}
+                      soloLectura={true}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
 
-            <h3>Reservas existentes</h3>
-            {reservas.length === 0 && <p>No hay reservas para esta cabaña.</p>}
-            {reservas.map(reserva => (
-              <ReservaResumenCard key={reserva.id} reserva={reserva} />
-            ))}
+            <button className="btn btn--primary disp__download" onClick={descargarPDF}>
+              Descargar calendario en PDF
+            </button>
+
+            <h3 className="disp__subheading">Reservas existentes</h3>
+            {reservas.length === 0 && <p className="disp__empty">No hay reservas para esta cabaña.</p>}
+            {reservas.map(r => <ReservaResumenCard key={r.id} reserva={r} />)}
           </>
         )}
       </div>
     </>
   );
 }
-
-export default ConsultarDisponibilidad;

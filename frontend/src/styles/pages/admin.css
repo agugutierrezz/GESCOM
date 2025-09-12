@@ -1,0 +1,119 @@
+.admin__wrap{
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 20px 16px 40px;
+}
+
+.admin__title{
+  text-align:center;
+  margin: 6px 0 18px;
+  font-size: 2rem;
+}
+
+.admin__card{
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+/* Filas (crear + items) */
+.admin__row{
+  display: grid;
+  grid-template-columns: 1fr 140px 1fr 160px; /* se adapta según fila */
+  gap: 10px;
+  align-items: end;
+}
+.admin__row--create{
+  grid-template-columns: 1fr 1fr 1fr 1fr 140px; /* usuario: 2 inputs + desc + dueño + botón */
+}
+
+.admin__actions{
+  display:flex;
+  gap:10px;
+  justify-content:flex-end;
+}
+
+/* src/styles/pages/admin.css — agrega estos ajustes */
+
+.admin__card--narrow { max-width: 840px; margin: 0 auto; }
+
+.admin__col { display:flex; flex-direction:column; gap:4px; }
+.admin__label { font-size:.85rem; color:var(--text-dim); }
+
+.admin__row--password {
+  grid-template-columns: 1fr 200px; 
+}
+@media (max-width:720px){
+  .admin__row--password { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 720px){
+  .admin__row,
+  .admin__row--create{
+    grid-template-columns: 1fr;
+  }
+  .admin__actions{ justify-content: flex-start; }
+}
+
+/* Contenedor y card ya los tenés */
+.admin__card--narrow { max-width: 960px; margin: 0 auto; }
+
+/* Títulos de sección */
+.admin__sectionTitle{
+  margin: 6px 2px 8px;
+  font-size: 1.15rem;
+  color: var(--text);
+}
+
+/* Fila base */
+.admin__row{
+  display: grid;
+  gap: 10px;
+  align-items: center;
+}
+
+/* Crear: 5 columnas */
+.admin__row--create{
+  grid-template-columns: 1.2fr 0.6fr 1.5fr 0.9fr 140px;
+  margin-bottom: 12px;
+}
+
+/* Encabezado del listado (alineado con filas) */
+.admin__row--head{
+  grid-template-columns: 1.2fr 0.6fr 1.5fr 0.9fr 0.6fr;
+  background: var(--bg-elev-2);
+  border: var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.admin__headCell{
+  font-weight: 700;
+  color: var(--text-dim);
+}
+.admin__headCell--actions{ text-align: right; }
+
+/* Filas del listado con más separación */
+.admin__row--list{
+  grid-template-columns: 1.2fr 0.6fr 1.5fr 0.9fr 0.6fr;
+  background: var(--surface);
+  border: var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: var(--shadow-low);
+}
+.admin__row--list + .admin__row--list{ margin-top: 10px; } /* separación entre filas */
+
+.admin__cell{ overflow: hidden; text-overflow: ellipsis; }
+.admin__cell--muted{ color: var(--text-dim); }
+.admin__cell--actions{ display: flex; justify-content: flex-end; gap: 10px; }
+
+/* En móvil apilamos y mantenemos acciones abajo */
+@media (max-width: 720px){
+  .admin__row--create,
+  .admin__row--head,
+  .admin__row--list{
+    grid-template-columns: 1fr;
+  }
+  .admin__headCell--actions,
+  .admin__cell--actions{ justify-content: flex-start; }
+}

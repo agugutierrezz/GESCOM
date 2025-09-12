@@ -96,60 +96,60 @@ function AdicionalesForm({ reservaId, adicionales, setAdicionales }) {
   };
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <label>Adicionales</label>
-        <Button type="button" onClick={agregar} variant="contained" size="small" startIcon={<AddIcon />}>
-          Agregar Adicional
-        </Button>
+    <div className="adicionales">
+      <div className="adicionales__head">
+        <h4>Adicionales</h4>
+        <button
+          type="button"
+          className="btn btn--primary"
+          onClick={agregar}
+        >
+          + Agregar adicional
+        </button>
       </div>
-      {adicionales.map((a, i) => (
-        <div key={i} className="adicional-item" style={{ border: '1px solid #ccc', padding: 8, marginBottom: 10 }}>
-          <InputDinero
-            label="Monto"
-            value={a.monto}
-            onChange={(val) => actualizar(i, 'monto', val)}
-            sx={{ mt: 1 }}
-            size="small"
-          />
 
-          <input
-            type="date"
-            value={a.fecha_pago}
-            onChange={e => actualizar(i, 'fecha_pago', e.target.value)}
-            sx={{ mt: 1 }}
-            size="small"
-            InputLabelProps={{ shrink: true }}
-          />
-          <input
-            type="text"
-            placeholder="Descripción"
-            value={a.descripcion}
-            onChange={e => actualizar(i, 'descripcion', e.target.value)}
-            sx={{ mt: 1 }}
-            size="small"
-          />
-          <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-            <Button
+      {adicionales.map((a, i) => (
+        <div key={i} className="adicional-item">
+          <div className="adicional-grid">
+            <InputDinero
+              placeholder="Monto"
+              value={a.monto}
+              onChange={(val) => actualizar(i, 'monto', val)}
+            />
+
+            <input
+              className="input"
+              type="date"
+              value={a.fecha_pago}
+              onChange={e => actualizar(i, 'fecha_pago', e.target.value)}
+            />
+
+            <input
+              className="input"
+              type="text"
+              placeholder="Descripción"
+              value={a.descripcion}
+              onChange={e => actualizar(i, 'descripcion', e.target.value)}
+            />
+          </div>
+
+          <div className="adicional-actions">
+            <button
               type="button"
+              className="btn btn--primary"
               onClick={() => guardar(i)}
               disabled={a.guardado}
               title={a.guardado ? 'Ya guardado' : 'Guardar en base de datos'}
-              variant="contained"
-              size="small"
-              startIcon={<SaveIcon />}
             >
               Guardar
-            </Button>
-             <Button
+            </button>
+            <button
               type="button"
+              className="btn btn--ghost"
               onClick={() => eliminar(i)}
-              variant="outlined"
-              size="small"
-              startIcon={<DeleteIcon />}
             >
               Eliminar
-            </Button>
+            </button>
           </div>
         </div>
       ))}

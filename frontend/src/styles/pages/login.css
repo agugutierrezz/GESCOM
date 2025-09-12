@@ -1,0 +1,21 @@
+.login__wrap{
+  min-height: 80vh;
+  display: grid;
+  /* centra título + card verticalmente y controla la separación entre ellos */
+  place-content: center;
+  justify-items: center;
+  gap: 56px;                 /* <— menos espacio entre H1 y card */
+  padding: 24px;
+  background: var(--bg);     /* refuerzo del fondo oscuro */
+}
+.login__title{
+  margin: 0;
+  font-size: 1.8rem;
+  color: var(--text);
+}
+.login__card{
+  width: min(500px, 200vw);   /* <— más ancha */
+}
+.login__form{ display: grid; gap: 12px; }
+.login__actions{ margin-top: 8px; }
+.mensaje{ margin-top: 12px; color: var(--text-dim); text-align: center; }

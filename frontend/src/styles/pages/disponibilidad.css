@@ -1,0 +1,132 @@
+/* ----- Layout general ----- */
+.disp__wrap{
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px 16px 40px;
+}
+.disp__title{
+  text-align:center;
+  margin: 6px 0 16px;
+  font-size: 2rem;
+}
+
+/* Controles fila 1 */
+.disp__controls{
+  display:grid;
+  grid-template-columns: 1fr 260px;
+  gap:16px;
+  align-items:end;
+  margin: 8px 0 10px;
+}
+@media (max-width: 720px){
+  .disp__controls{ grid-template-columns: 1fr; }
+}
+.disp__field select,
+.disp__field .select{
+  width:100%;
+}
+.disp__label{
+  display:block;
+  margin: 0 0 6px;
+  color: var(--text-dim);
+  font-size:.95rem;
+}
+
+/* Fila 2 + Fila 3: mes inicial + navegación */
+.disp__sublabel{
+  margin-top:10px;
+  margin-bottom:6px;
+  color: var(--text-dim);
+  font-weight:600;
+}
+.disp__nav{
+  display:grid;
+  grid-template-columns: 48px 1fr 48px;
+  gap:10px;
+  align-items:center;
+  margin-bottom: 14px;
+}
+.disp__nav .btn{ height:48px; }
+.disp__nav-current{
+  text-align:center;
+  padding:12px 10px;
+  border-radius:14px;
+  background: var(--bg-elev-1);
+  border: var(--border);
+  font-weight:600;
+}
+
+/* Grilla de calendarios: 2 columnas */
+.disp__grid{
+  display:grid;
+  grid-template-columns: repeat(2, max-content); /* columnas del tamaño del calendario */
+  gap:22px;
+  align-items:start;
+  justify-content:center; /* centra todo el bloque */
+}
+@media (max-width: 720px){
+  .disp__grid{ grid-template-columns: 1fr; }
+}
+.disp__month{
+  background: transparent;
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+  display:flex;               /* centra el calendario dentro de cada celda */
+  justify-content:center;
+}
+
+/* Botón PDF */
+.disp__download{ margin: 18px auto 6px; display:block; }
+
+/* Subtítulo lista reservas + vacío */
+.disp__subheading{ margin: 18px 0 6px; }
+.disp__empty{ color: var(--text-dim); }
+
+/* Contenedor oculto para render PDF */
+.disp__pdf{
+  position:absolute; left:-10000px; top:0;
+  width:1040px;
+  padding:12px;
+  background: var(--bg);         /* ★ fondo oscuro */
+  color: var(--text);
+}
+
+.disp__grid--pdf{
+  grid-template-columns: repeat(2, 1fr);   /* 2×N en PDF también */
+  gap: 16px;
+}
+
+/* El contenedor de cada mes NO debe ser una card */
+.disp__month{
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.disp__sublabel{
+  margin: 8px 0 6px;
+  color: var(--text-dim);
+  font-weight: 600;
+  text-align: center;
+}
+
+.disp__nav{
+  display:grid;
+  grid-template-columns: 48px minmax(280px, 520px) 48px;
+  gap:10px;
+  align-items:center;
+  justify-content:center;
+  margin-bottom: 10px;
+}
+.disp__nav .btn{ height:48px; }
+.disp__nav-current{
+  min-height:48px;
+  display:flex; align-items:center; justify-content:center;
+  padding: 0 12px;
+  border-radius:14px;
+  background: var(--bg-elev-1);
+  border: var(--border);
+  font-weight:600;
+}
