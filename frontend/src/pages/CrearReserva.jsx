@@ -18,10 +18,11 @@ const API = import.meta.env.VITE_API_URL;
 function CrearReserva() {
   const [cliente, setCliente] = useState('');
   const [descripcion, setDescripcion] = useState('');
-  const [cabana, setCabana] = useState(''); // id en string para el <select>
+  const [cabana, setCabana] = useState('');
   const [fechaInicio, setFechaInicio] = useState(null);
   const [fechaFin, setFechaFin] = useState(null);
   const [costoTotal, setCostoTotal] = useState('');
+  const [tipoMoneda, setTipoMoneda] = useState('');
   const [sena, setSena] = useState(0);
   const [reservasExistentes, setReservasExistentes] = useState([]);
   const [fechasOcupadas, setFechasOcupadas] = useState([]);
@@ -48,6 +49,18 @@ function CrearReserva() {
   const cabanas = useContext(CabanasContext);
   const navigate = useNavigate();
   const location = useLocation();
+
+  function parseLocalDateTime(s) {
+    if (!(typeof s === 'string')) return new Date(s);
+    if (/Z|[+-]\d{2}:\d{2}$/.test(s)) return new Date(s); // ya trae zona
+    const [datePart, timePart] = s.split('T');
+    const [y, m, d] = datePart.split('-').map(Number);
+    if (timePart) {
+      const [hh, mm = 0] = timePart.split(':').map(Number);
+      return new Date(y, m - 1, d, hh, mm, 0, 0);
+    }
+    return new Date(y, m - 1, d, 0, 0, 0, 0); // solo fecha, local
+  }
 
   // Prefill al entrar con state (editar o crear desde otra pantalla)
   useEffect(() => {
@@ -79,6 +92,7 @@ function CrearReserva() {
     setFechaInicio(r.fecha_inicio ? parsearFechaLocal(r.fecha_inicio) : null);
     setFechaFin(r.fecha_fin ? parsearFechaLocal(r.fecha_fin) : null);
     setCostoTotal(r.costo_total || '');
+    setTipoMoneda((r.tipo_moneda || 'ARS').toUpperCase());
     setSena(r.sena || 0);
     setAdicionales(r.adicionales || []);
   }, [location.state, cabanas]);
@@ -89,7 +103,7 @@ function CrearReserva() {
     const ac = new AbortController();
 
     fetch(`${API}/api/reservas?cabana_id=${cabana}`, {
-      credentials: 'include',            // ← NECESARIO para sesión
+      credentials: 'include',            
       signal: ac.signal,
     })
       .then(async res => {
@@ -106,43 +120,44 @@ function CrearReserva() {
         (Array.isArray(data) ? data : [])
           .filter(r => !editando || r.id !== reservaId)
           .forEach(r => {
-            const inicio = new Date(r.fecha_inicio);
-            const fin = new Date(r.fecha_fin);
-            const rInicio = new Date(inicio);
-            const rFin = new Date(fin);
-            rInicio.setHours(H_IN, 0, 0, 0);
+            const rInicio = parseLocalDateTime(r.fecha_inicio);
+            const rFin    = parseLocalDateTime(r.fecha_fin);
+
+            rInicio.setHours(H_IN,  0, 0, 0);
             rFin.setHours(H_OUT, 0, 0, 0);
 
             const keyLocal = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
             const keyInicio = keyLocal(rInicio);
             const keyFin    = keyLocal(rFin);
 
             estado[keyInicio] =
               estado[keyInicio] === 'libre-egreso' ? 'ocupado'
-              : estado[keyInicio] === 'ocupado' ? 'ocupado'
+              : estado[keyInicio] === 'ocupado'    ? 'ocupado'
               : 'libre-ingreso';
 
             estado[keyFin] =
               estado[keyFin] === 'libre-ingreso' ? 'ocupado'
-              : estado[keyFin] === 'ocupado' ? 'ocupado'
+              : estado[keyFin] === 'ocupado'     ? 'ocupado'
               : 'libre-egreso';
 
-            let actual = new Date(rInicio);
+            const actual = new Date(rInicio);
             actual.setDate(actual.getDate() + 1);
             while (actual < rFin) {
-              const key = actual.toISOString().split('T')[0];
+              const key = keyLocal(actual);
               estado[key] = 'ocupado';
               actual.setDate(actual.getDate() + 1);
             }
           });
 
         setDiasEstado(estado);
+
         const ocupadas = Object.entries(estado)
           .filter(([, e]) => e === 'ocupado')
           .map(([ymd]) => { const [y,m,d]=ymd.split('-').map(Number); return new Date(y,m-1,d); });
+
         setFechasOcupadas(ocupadas);
-      })
-      .catch(err => {
+      }).catch(err => {
         if (err.name !== 'AbortError') {
           console.error('❌ Error obteniendo reservas:', err);
           setReservasExistentes([]);
@@ -262,14 +277,19 @@ function CrearReserva() {
     if (guardando) return;
     if (!validarReserva()) return;
 
+    if (tipoMoneda !== 'ARS' && tipoMoneda !== 'USD') {
+      toast.error('Seleccioná la moneda de la reserva.');
+      return;
+    }
+
     setGuardando(true);
 
-  function formatearFechaLocal(d) {
-    const y = d.getFullYear();
-    const m = d.getMonth();
-    const day = d.getDate();
-    return new Date(Date.UTC(y, m, day)).toISOString().slice(0, 10);
-  }
+    function formatearFechaLocal(d) {
+      const y = d.getFullYear();
+      const m = d.getMonth();
+      const day = d.getDate();
+      return new Date(Date.UTC(y, m, day)).toISOString().slice(0, 10);
+    }
 
     const body = {
       cliente,
@@ -281,6 +301,7 @@ function CrearReserva() {
       hora_fin: Number(H_OUT),
       costo_total: parseFloat(costoTotal),
       sena: parseFloat(sena),
+      tipo_moneda: tipoMoneda,
       adicionales,
     };
 
@@ -399,7 +420,7 @@ function CrearReserva() {
             </div>
 
             {/* Reserva en USD */}
-            {cotizaciones && (
+            {cotizaciones && tipoMoneda === 'ARS' && (
               <div className="form-row">
                 <label>Reserva en Dólares (opcional)</label>
                 <div className="form-row--2">
@@ -425,6 +446,24 @@ function CrearReserva() {
               </div>
             )}
 
+            {/* Moneda de la reserva */}
+            <div className="form-row">
+              <label>Moneda</label>
+              <select
+                className="select"
+                value={tipoMoneda}
+                onChange={(e) => setTipoMoneda(e.target.value)}
+                disabled={editando}
+                required
+                aria-invalid={tipoMoneda === ''}
+              >
+                <option value="" disabled>Seleccioná una opción...</option>
+                <option value="ARS">Pesos (AR$)</option>
+                <option value="USD">Dólares (U$D)</option>
+              </select>
+              {editando && <p className="muted" style={{marginTop:4}}>La moneda no puede modificarse al editar.</p>}
+            </div>
+
             {/* Costo total + Seña */}
             <div className="form-row form-row--2">
               <div>
@@ -442,6 +481,7 @@ function CrearReserva() {
               reservaId={editando ? reservaId : null}
               adicionales={adicionales}
               setAdicionales={setAdicionales}
+              monedaReserva={tipoMoneda} 
             />
 
             {/* Guardar */}

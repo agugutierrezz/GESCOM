@@ -1,4 +1,3 @@
-// backend/routes/reservas.js
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
@@ -16,6 +15,11 @@ function toTime(v) {
   return null;
 }
 
+function normalizarMoneda(v) {
+  const up = String(v || '').trim().toUpperCase();
+  return (up === 'USD' || up === 'ARS') ? up : 'ARS';
+}
+
 async function cabanaEsDelUsuario(cabanaId, uid) {
   const { rowCount } = await pool.query(
     'SELECT 1 FROM cabanas WHERE id=$1 AND usuario_id=$2',
@@ -26,8 +30,15 @@ async function cabanaEsDelUsuario(cabanaId, uid) {
 
 /**
  * POST /api/reservas
- * Body: { cliente, descripcion, cabana_id, fecha_inicio, fecha_fin, hora_inicio?, hora_fin?, costo_total, sena, adicionales?[] }
- * - Setea usuario_id desde la sesión (FK compuesta con cabanas)
+ * Body: {
+ *   cliente, descripcion, cabana_id, fecha_inicio, fecha_fin,
+ *   hora_inicio?, hora_fin?, costo_total, sena, tipo_moneda?, adicionales?[
+ *     { monto, fecha_pago?, descripcion?, tipo_moneda? }
+ *   ]
+ * }
+ * - Setea usuario_id desde la sesión
+ * - La reserva guarda un tipo_moneda (ARS/USD). costo_total y seña "heredan" ese tipo.
+ * - Cada adicional puede venir con su propio tipo_moneda; si no viene, hereda el de la reserva.
  */
 router.post('/', async (req, res) => {
   const uid = req.session.user.id;
@@ -43,6 +54,7 @@ router.post('/', async (req, res) => {
     hora_fin,
     costo_total,
     sena,
+    tipo_moneda,      // ← NUEVO
     adicionales
   } = req.body;
 
@@ -54,23 +66,46 @@ router.post('/', async (req, res) => {
 
     const horaInicioStr = toTime(hora_inicio);
     const horaFinStr = toTime(hora_fin);
+    const moneda = normalizarMoneda(tipo_moneda);
 
+    // Insert reserva con tipo_moneda
     const result = await pool.query(
       `INSERT INTO reservas
-        (cliente, descripcion, cabana_id, usuario_id, fecha_inicio, hora_inicio, fecha_fin, hora_fin, costo_total, sena, esactiva)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,true)
+        (cliente, descripcion, cabana_id, usuario_id,
+         fecha_inicio, hora_inicio, fecha_fin, hora_fin,
+         costo_total, sena, esactiva, tipo_moneda)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,true,$11)
        RETURNING id`,
-      [cliente, descripcion || null, cabana_id, uid, fecha_inicio, horaInicioStr, fecha_fin, horaFinStr, costo_total, sena]
+      [
+        cliente,
+        descripcion || null,
+        cabana_id,
+        uid,
+        fecha_inicio,
+        horaInicioStr,
+        fecha_fin,
+        horaFinStr,
+        costo_total,
+        sena,
+        moneda
+      ]
     );
 
     const reservaId = result.rows[0].id;
 
+    // Insert adicionales (cada uno puede tener su propia moneda; default = moneda de reserva)
     if (Array.isArray(adicionales) && adicionales.length > 0) {
       for (const a of adicionales) {
+        const monto = parseFloat(a.monto);
+        if (Number.isNaN(monto)) continue;
+        const fecha = a.fecha_pago ? new Date(a.fecha_pago) : new Date();
+        const desc = a.descripcion || null;
+        const monAdic = normalizarMoneda(a.tipo_moneda || moneda);
+
         await pool.query(
-          `INSERT INTO adicionales (reserva_id, monto, fecha_pago, descripcion)
-           VALUES ($1, $2, $3, $4)`,
-          [reservaId, parseFloat(a.monto), a.fecha_pago ? new Date(a.fecha_pago) : new Date(), a.descripcion || null]
+          `INSERT INTO adicionales (reserva_id, monto, fecha_pago, descripcion, tipo_moneda)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [reservaId, monto, fecha, desc, monAdic]
         );
       }
     }
@@ -85,7 +120,7 @@ router.post('/', async (req, res) => {
 /**
  * GET /api/reservas?cabana_id=...
  * - Admin: ve todas o por cabaña
- * - User: sólo propias (por usuario_id y/o por cabaña propia)
+ * - User: sólo propias
  */
 router.get('/', async (req, res) => {
   const uid = req.session.user.id;
@@ -93,13 +128,13 @@ router.get('/', async (req, res) => {
   const cabanaId = req.query.cabana_id;
 
   try {
+    // Expirar reservas viejas
     await pool.query(`
       UPDATE reservas
       SET esactiva = false
       WHERE esactiva = true AND fecha_fin < CURRENT_DATE
     `);
 
-    // Si filtra por cabana, validar propiedad si no es admin
     if (cabanaId && !admin) {
       const ok = await cabanaEsDelUsuario(cabanaId, uid);
       if (!ok) return res.status(404).json({ message: 'Cabaña no encontrada' });
@@ -114,6 +149,7 @@ router.get('/', async (req, res) => {
           to_char(r.fecha_fin,     'YYYY-MM-DD') AS fecha_fin,
           r.hora_inicio, r.hora_fin,
           r.costo_total, r.sena,
+          r.tipo_moneda,                 -- ← NUEVO
           r.cliente, r.descripcion, r.esactiva,
           json_build_object('id', b.id, 'nombre', b.nombre) AS cabana
         FROM reservas r
@@ -131,6 +167,7 @@ router.get('/', async (req, res) => {
           to_char(r.fecha_fin,     'YYYY-MM-DD') AS fecha_fin,
           r.hora_inicio, r.hora_fin,
           r.costo_total, r.sena,
+          r.tipo_moneda,                 -- ← NUEVO
           r.cliente, r.descripcion, r.esactiva,
           b.nombre AS cabana
         FROM reservas r
@@ -169,6 +206,7 @@ router.get('/:id', async (req, res) => {
         r.hora_fin,
         r.costo_total,
         r.sena,
+        r.tipo_moneda,                 -- ← NUEVO
         r.esactiva,
         json_build_object('id', b.id, 'nombre', b.nombre) AS cabana
       FROM reservas r
@@ -223,6 +261,7 @@ router.delete('/:id', async (req, res) => {
 /**
  * PUT /api/reservas/:id
  * - Admin o dueño
+ * - No permite cambiar tipo_moneda (se valida en backend además del front)
  */
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
@@ -236,11 +275,31 @@ router.put('/:id', async (req, res) => {
     hora_fin,
     costo_total,
     sena,
-    adicionales
+    tipo_moneda,   // si viene distinto al actual → 400
+    adicionales    // reemplazo total de adicionales
   } = req.body;
 
   try {
-    // Validar nueva cabana (si cambia)
+    // Traer moneda actual para bloquear cambios
+    const cur = await pool.query(
+      'SELECT usuario_id, tipo_moneda FROM reservas WHERE id = $1',
+      [id]
+    );
+    if (cur.rowCount === 0) {
+      return res.status(404).json({ message: 'Reserva no encontrada' });
+    }
+
+    const reservaActual = cur.rows[0];
+    const monedaActual = reservaActual.tipo_moneda;
+    const monedaNueva = (tipo_moneda ?? monedaActual);
+    const normalNueva = normalizarMoneda(monedaNueva);
+
+    // Seguridad adicional: impedir cambio de ARS↔USD
+    if (normalNueva !== monedaActual) {
+      return res.status(400).json({ message: 'No se puede cambiar la moneda de la reserva' });
+    }
+
+    // Validar nueva cabaña (si cambia) para usuarios no admin
     if (!isAdmin(req)) {
       const ok = await cabanaEsDelUsuario(cabana_id, req.session.user.id);
       if (!ok) return res.status(403).json({ message: 'Cabaña no pertenece al usuario' });
@@ -278,7 +337,7 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Reserva no encontrada' });
     }
 
-    // Reemplazar adicionales
+    // Reemplazar adicionales (manteniendo su propia moneda)
     await pool.query(
       `DELETE FROM adicionales
        WHERE reserva_id = $1
@@ -289,14 +348,16 @@ router.put('/:id', async (req, res) => {
     if (Array.isArray(adicionales) && adicionales.length > 0) {
       for (const a of adicionales) {
         const monto = parseFloat(a.monto);
-        const fecha_pago = a.fecha_pago ? new Date(a.fecha_pago) : new Date();
-        const desc = a.descripcion || null;
         if (Number.isNaN(monto)) continue;
 
+        const fecha_pago = a.fecha_pago ? new Date(a.fecha_pago) : new Date();
+        const desc = a.descripcion || null;
+        const monAdic = normalizarMoneda(a.tipo_moneda || monedaActual);
+
         await pool.query(
-          `INSERT INTO adicionales (reserva_id, monto, fecha_pago, descripcion)
-           VALUES ($1, $2, $3, $4)`,
-          [id, monto, fecha_pago, desc]
+          `INSERT INTO adicionales (reserva_id, monto, fecha_pago, descripcion, tipo_moneda)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [id, monto, fecha_pago, desc, monAdic]
         );
       }
     }

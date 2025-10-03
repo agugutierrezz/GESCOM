@@ -5,12 +5,12 @@ import AddIcon from '@mui/icons-material/Add';
 import SaveIcon from '@mui/icons-material/Save';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-function AdicionalesForm({ reservaId, adicionales, setAdicionales }) {
+function AdicionalesForm({ reservaId, adicionales, setAdicionales, monedaReserva = 'ARS' }) {
   const agregar = () => {
     const hoy = new Date().toISOString().split('T')[0];
     setAdicionales([
       ...adicionales,
-      { monto: 0, fecha_pago: hoy, descripcion: '', guardado: false }
+      { monto: 0, fecha_pago: hoy, descripcion: '', tipo_moneda: monedaReserva, guardado: false }
     ]);
   };
 
@@ -28,7 +28,8 @@ function AdicionalesForm({ reservaId, adicionales, setAdicionales }) {
     // Si está guardado, lo borramos del backend
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/adicionales/${adicional.id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        credentials: 'include'
       });
 
       if (!res.ok) throw new Error();
@@ -68,6 +69,7 @@ function AdicionalesForm({ reservaId, adicionales, setAdicionales }) {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/adicionales`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials:'include',
         body: JSON.stringify({
           reserva_id: reservaId,
           monto: montoNum,
@@ -85,7 +87,6 @@ function AdicionalesForm({ reservaId, adicionales, setAdicionales }) {
       const copia = [...adicionales];
       copia[i] = {
         ...copia[i],
-        id: nuevo.id || copia[i].id, // opcional si backend devuelve el id
         guardado: true
       };
       setAdicionales(copia);
@@ -117,6 +118,16 @@ function AdicionalesForm({ reservaId, adicionales, setAdicionales }) {
               onChange={(val) => actualizar(i, 'monto', val)}
             />
 
+            <select
+              className="select"
+              value={(a.tipo_moneda || 'ARS').toUpperCase()}
+              onChange={(e) => actualizar(i, 'tipo_moneda', e.target.value)}
+              title="Moneda del adicional"
+            >
+              <option value="ARS">AR$ Pesos</option>
+              <option value="USD">U$D Dólares</option>
+            </select>
+
             <input
               className="input"
               type="date"
@@ -131,25 +142,6 @@ function AdicionalesForm({ reservaId, adicionales, setAdicionales }) {
               value={a.descripcion}
               onChange={e => actualizar(i, 'descripcion', e.target.value)}
             />
-          </div>
-
-          <div className="adicional-actions">
-            <button
-              type="button"
-              className="btn btn--primary"
-              onClick={() => guardar(i)}
-              disabled={a.guardado}
-              title={a.guardado ? 'Ya guardado' : 'Guardar en base de datos'}
-            >
-              Guardar
-            </button>
-            <button
-              type="button"
-              className="btn btn--ghost"
-              onClick={() => eliminar(i)}
-            >
-              Eliminar
-            </button>
           </div>
         </div>
       ))}

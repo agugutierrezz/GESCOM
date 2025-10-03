@@ -6,6 +6,7 @@ import IconButton from '@mui/material/IconButton';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import { formatearMonto } from '../../utils/moneda';
 
 function ReservaCard({ reserva, onEdit, onDelete, onView }) {
   const fechaYMDaLocal = (v) => {
@@ -32,7 +33,7 @@ function ReservaCard({ reserva, onEdit, onDelete, onView }) {
         '&:hover': { boxShadow: 'var(--shadow-mid)', transform: 'translateY(-1px)' },
         display: 'grid',
         gridTemplateColumns: { xs: '1fr', md: '1fr 110px' },
-        alignItems: 'stretch',                   // ← permite que la columna derecha estire
+        alignItems: 'stretch',                  
         pr: {md: 1.5}
       }}
     >
@@ -53,10 +54,10 @@ function ReservaCard({ reserva, onEdit, onDelete, onView }) {
           <strong>Egreso:</strong> {fechaYMDaLocal(reserva.fecha_fin)} a las {(reserva.hora_fin)}
         </Typography>
         <Typography sx={{ fontSize: '1.05rem', lineHeight: 1.55 }}>
-          <strong>Costo Total:</strong> ${formatearNumero(reserva.costo_total)}
+          <strong>Costo Total:</strong> {formatearMonto(reserva.costo_total, reserva.tipo_moneda)}
         </Typography>
         <Typography sx={{ fontSize: '1.05rem', lineHeight: 1.55 }}>
-          <strong>Seña:</strong> ${formatearNumero(reserva.sena)}
+          <strong>Seña:</strong> {formatearMonto(reserva.sena, reserva.tipo_moneda)}
         </Typography>
       </CardContent>
 
