@@ -247,22 +247,20 @@ function CrearReserva() {
       return false;
     }
 
-    const ingreso = new Date(fechaInicio); 
+    const ingreso = new Date(fechaInicio);
     ingreso.setHours(H_IN, 0, 0, 0);
-    const egreso  = new Date(fechaFin);    
+    const egreso = new Date(fechaFin);
     egreso.setHours(H_OUT, 0, 0, 0);
 
     for (const r of reservasExistentes.filter(r => !editando || r.id !== reservaId)) {
-      const rIngreso = new Date(r.fecha_inicio); 
+      const rIngreso = parseLocalDateTime(r.fecha_inicio);
       rIngreso.setHours(H_IN, 0, 0, 0);
-      const rEgreso  = new Date(r.fecha_fin);    
-      rEgreso.setHours(H_OUT, 0, 0, 0);
 
-      if (
-        (ingreso >= rIngreso && ingreso < rEgreso) ||
-        (egreso > rIngreso && egreso <= rEgreso) ||
-        (ingreso <= rIngreso && egreso >= rEgreso)
-      ) {
+      const rEgreso = parseLocalDateTime(r.fecha_fin);
+      rEgreso.setHours(H_OUT, 0, 0, 0);
+      
+      const noSolapa = (egreso <= rIngreso) || (ingreso >= rEgreso);
+      if (!noSolapa) {
         setMensaje(`Conflicto con reserva de ${r.cliente}`);
         return false;
       }
