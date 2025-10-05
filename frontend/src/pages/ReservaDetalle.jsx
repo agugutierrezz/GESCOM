@@ -2,28 +2,19 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import BotonVolver from '../components/BotonVolver';
 import ScreenLoader from '../components/ScreenLoader';
-import { saveAs } from 'file-saver';
-import {
-  Document, Packer, Paragraph, TextRun, AlignmentType, HeadingLevel,
-  Table, TableRow, TableCell, WidthType, BorderStyle, ImageRun
-} from 'docx';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import { formatearMonto } from '../utils/moneda';
 import logo from '/images/logo.png';
 import '../styles/pages/detalle-reserva.css';
-import { formatearMonto, etiquetaMoneda } from '../utils/moneda';
 
 function ReservaDetalle() {
   const { id } = useParams();
   const [reserva, setReserva] = useState(null);
   const [adicionales, setAdicionales] = useState([]);
   const [userId, setUserId] = useState(null);
-  const [loading, setLoading] = useState(true);   // ← nuevo
+  const [loading, setLoading] = useState(true);
   const API = import.meta.env.VITE_API_URL;
-
-  async function imgToArrayBuffer(src) {
-    const res = await fetch(src);
-    const blob = await res.blob();
-    return await blob.arrayBuffer();
-  }
 
   // Reserva + adicionales
   useEffect(() => {
@@ -55,13 +46,13 @@ function ReservaDetalle() {
           setAdicionales([]);
         }
       } finally {
-        setLoading(false);       // ← cierro loader
+        setLoading(false);
       }
     })();
     return () => ac.abort();
-  }, [id]);
+  }, [API, id]);
 
-  // Usuario
+  // Usuario actual
   useEffect(() => {
     const ac = new AbortController();
     (async () => {
@@ -73,257 +64,129 @@ function ReservaDetalle() {
         } else {
           setUserId(null);
         }
-      } catch { setUserId(null); }
+      } catch {
+        setUserId(null);
+      }
     })();
     return () => ac.abort();
-  }, []);
+  }, [API]);
 
-  const descargarDOCX = async () => {
+  // Helpers UI
+  const fdate = (d) => {
+    if (!d) return '—';
+    try {
+      return new Date(d).toLocaleDateString('es-AR');
+    } catch {
+      return '—';
+    }
+  };
+
+  // Acumuladores por moneda (evita leer de `reserva` si aún es null)
+  const totalARS =
+    (reserva?.tipo_moneda === 'ARS' ? Number(reserva?.sena) || 0 : 0) +
+    adicionales
+      .filter(a => (a?.tipo_moneda || 'ARS').toUpperCase() === 'ARS')
+      .reduce((s, a) => s + (Number(a?.monto) || 0), 0);
+
+  const totalUSD =
+    (reserva?.tipo_moneda === 'USD' ? Number(reserva?.sena) || 0 : 0) +
+    adicionales
+      .filter(a => (a?.tipo_moneda || 'ARS').toUpperCase() === 'USD')
+      .reduce((s, a) => s + (Number(a?.monto) || 0), 0);
+
+  // PDF
+  const descargarPDF = () => {
     if (userId !== 1 || !reserva) return;
 
-    const logoBuf = await imgToArrayBuffer(logo);
+    const doc = new jsPDF();
 
-    // Helpers
-    const P = (text, opts = {}) => new Paragraph({ children: [new TextRun(text)], ...opts });
-    const Right = (text) => P(text, { alignment: AlignmentType.RIGHT });
-    const Bold = (text) => new TextRun({ text, bold: true });
-    const fdate = (d) => new Date(d).toLocaleDateString('es-AR');
+    // Logo
+    doc.addImage(logo, 'PNG', 80, 10, 50, 40);
 
-    // ── Encabezado
-    const header = [
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        children: [
-          new ImageRun({
-            data: logoBuf,
-            transformation: { width: 160, height: 160 },
-          }),
-        ],
-        spacing: { after: 200 },
-      }),
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        heading: HeadingLevel.TITLE,
-        children: [new TextRun('COMPROBANTE DE PAGO')],
-      }),
-      Right(`Comprobante #${reserva.id}`),
-      Right(`Fecha: ${new Date().toLocaleDateString('es-AR')}`),
-      P(' ', { spacing: { after: 200 } }), // evita párrafo completamente vacío
-    ];
+    // Título
+    doc.setFontSize(22);
+    doc.text('COMPROBANTE DE PAGO', 105, 60, { align: 'center' });
 
-    // ── Datos del Complejo
-    const datosComplejo = [
-      new Paragraph({ children: [Bold('Datos del Complejo')], spacing: { after: 100 } }),
-      P('Calle: Mar del Plata e/ 38 y 39'),
-      P('Ciudad: Mar Azul, Partido de Villa Gessell, Provincia de Buenos Aires'),
-      P('CP: B7165'),
-      P(' '),
-    ];
+    // Metadatos
+    doc.setFontSize(12);
+    doc.text(`Comprobante #${reserva.id}`, 200, 20, { align: 'right' });
+    doc.text(`Fecha: ${new Date().toLocaleDateString('es-AR')}`, 200, 26, { align: 'right' });
 
-    // ── Datos de la Reserva
-    const datosReserva = [
-      new Paragraph({ children: [Bold('Datos de la Reserva')], spacing: { after: 100 } }),
-      P(`Cliente: ${reserva.cliente}`),
-      P(`Cabaña: ${reserva.cabana?.nombre || '---'}`),
-      P(`Fecha de Ingreso: ${fdate(reserva.fecha_inicio)}`),
-      P(`Fecha de Egreso: ${fdate(reserva.fecha_fin)}`),
-      P(`Costo de Reserva: ${formatearMonto(reserva.costo_total, reserva.tipo_moneda)}`),
-      P(' '),
-    ];
+    let y = 75;
 
-    // ── Pagos (tabla)
-    const monedaReserva = (reserva?.tipo_moneda || 'ARS').toUpperCase();
-    const cotiz = Number(reserva?.sena_cotizacion) || 0; // pesos por dólar
-    const etiqueta = (reserva?.sena_cotizacion_nombre || '').replace('_', ' ');
+    // Datos del Complejo
+    doc.setFontSize(14);
+    doc.text('Datos del Complejo', 15, y);
+    doc.setLineWidth(0.5);
+    doc.line(15, y + 2, 195, y + 2);
+    y += 10;
 
-    // 1) Detectar seña principal y moneda
-    // Campos posibles en tu backend que ya se vieron en el FE:
-    // - reserva.sena (monto de seña en moneda típica de la reserva)
-    // - reserva.sena_ars (monto de seña en ARS, si la reserva es USD)
-    // - opcional: reserva.sena_usd (si existiera)
-    let senaMonto = 0;
-    let senaMoneda = 'ARS';
+    doc.setFontSize(12);
+    doc.text('Calle: Mar del Plata e/ 38 y 39', 15, y); y += 8;
+    doc.text('Ciudad: Mar Azul, Partido de Villa Gessell, Provincia de Buenos Aires', 15, y); y += 8;
+    doc.text('CP: B7165', 15, y); y += 10;
 
-    if (monedaReserva === 'ARS') {
-      // Prefiere un campo explícito en ARS; si no, usa sena en la misma moneda de la reserva
-      senaMonto = Number(reserva?.sena_ars ?? reserva?.sena) || 0;
-      senaMoneda = 'ARS';
-    } else {
-      // Reserva en USD
-      const senaUsdDirecta = Number(reserva?.sena_usd ?? reserva?.sena) || 0;
-      const senaArs = Number(reserva?.sena_ars) || 0;
+    // Datos de la Reserva
+    doc.setFontSize(14);
+    doc.text('Datos de la Reserva', 15, y);
+    doc.line(15, y + 2, 195, y + 2);
+    y += 10;
 
-      if (senaUsdDirecta > 0) {
-        senaMonto = senaUsdDirecta;
-        senaMoneda = 'USD';
-      } else if (senaArs > 0 && cotiz > 0) {
-        // Convertir ARS a USD si solo hay seña en ARS
-        senaMonto = senaArs / cotiz;
-        senaMoneda = 'USD';
-      } else if (senaArs > 0) {
-        // Sin cotización: al menos mostrá el valor que sí tenés (en ARS)
-        senaMonto = senaArs;
-        senaMoneda = 'ARS';
-      } else {
-        senaMonto = 0;
-        senaMoneda = 'USD';
-      }
-    }
+    doc.setFontSize(12);
+    doc.text(`Cliente: ${reserva.cliente}`, 15, y); y += 8;
+    doc.text(`Cabaña: ${reserva.cabana?.nombre || '---'}`, 15, y); y += 8;
+    doc.text(`Fecha de Ingreso: ${fdate(reserva.fecha_inicio)}`, 15, y); y += 8;
+    doc.text(`Fecha de Egreso: ${fdate(reserva.fecha_fin)}`, 15, y); y += 8;
+    doc.text(`Costo de Reserva: ${formatearMonto(reserva.costo_total, reserva.tipo_moneda)}`, 15, y); y += 12;
 
-    // 2) Encabezado de la tabla
-    const rows = [
-      new TableRow({
-        children: [
-          new TableCell({
-            children: [new Paragraph({ children: [new TextRun({ text: 'Descripción', bold: true })] })],
-            width: { size: 65, type: WidthType.PERCENTAGE },
-          }),
-          new TableCell({
-            children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: 'Monto', bold: true })] })],
-            width: { size: 35, type: WidthType.PERCENTAGE },
-          }),
-        ],
-      }),
-    ];
+    // Pagos
+    doc.setFontSize(14);
+    doc.text('Pagos', 15, y);
+    doc.line(15, y + 2, 195, y + 2);
+    y += 10;
 
-    // 3) Fila Seña (si hay)
-    const senaTexto = senaMonto > 0 ? formatearMonto(senaMonto, senaMoneda) : '—';
-    rows.push(
-      new TableRow({
-        children: [
-          new TableCell({
-            children: [new Paragraph('Seña')],
-            width: { size: 65, type: WidthType.PERCENTAGE },
-          }),
-          new TableCell({
-            children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun(senaTexto)] })],
-            width: { size: 35, type: WidthType.PERCENTAGE },
-          }),
-        ],
-      })
-    );
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'bold');
+    doc.text('Descripción', 15, y);
+    doc.text('Monto', 150, y, { align: 'right' });
+    doc.setFont(undefined, 'normal');
+    y += 8;
 
-    // 4) Fila de equivalencia (si hay cotización y la seña es no-cero)
-    if (senaMonto > 0 && cotiz > 0) {
-      let eqTxt = '';
-      if (senaMoneda === 'ARS') {
-        const eqUSD = senaMonto / cotiz;
-        eqTxt = `Equiv. U$D ${eqUSD.toLocaleString('es-AR', { maximumFractionDigits: 2 })}${
-          etiqueta ? ` (al ${etiqueta})` : ''
-        }`;
-      } else {
-        const eqARS = senaMonto * cotiz;
-        eqTxt = `Equiv. AR$ ${eqARS.toLocaleString('es-AR', { maximumFractionDigits: 2 })}${
-          etiqueta ? ` (al ${etiqueta})` : ''
-        }`;
-      }
+    // Seña
+    doc.text('Seña', 15, y);
+    doc.text(formatearMonto(reserva.sena, reserva.tipo_moneda), 150, y, { align: 'right' });
+    y += 8;
 
-      rows.push(
-        new TableRow({
-          children: [
-            new TableCell({
-              children: [new Paragraph({ children: [new TextRun({ text: eqTxt })] })],
-              width: { size: 65, type: WidthType.PERCENTAGE },
-            }),
-            new TableCell({
-              children: [new Paragraph({ children: [new TextRun('\u00A0')] })], // evita celda vacía real
-              width: { size: 35, type: WidthType.PERCENTAGE },
-            }),
-          ],
-        })
-      );
-    }
+    // Adicionales (cada uno tiene su propia moneda)
+    adicionales.forEach(a => {
+      const descripcion = a?.descripcion || '—';
+      const monto = Number(a?.monto) || 0;
+      const fechaLinea = a?.fecha_pago ? fdate(a.fecha_pago) : '—';
+      const linea = `${descripcion} (${fechaLinea})`;
 
-    // 5) Adicionales
-    const adics = Array.isArray(adicionales) ? adicionales : [];
-    adics.forEach((a) => {
-      const monto = Number(a.monto) || 0;
-      const fechaTxt = a.fecha_pago ? new Date(a.fecha_pago).toLocaleDateString('es-AR') : '—';
-      const desc = (a.descripcion ? `${a.descripcion}` : '—') + ` (${fechaTxt})`;
-
-      rows.push(
-        new TableRow({
-          children: [
-            new TableCell({
-              children: [new Paragraph(desc)],
-              width: { size: 65, type: WidthType.PERCENTAGE },
-            }),
-            new TableCell({
-              children: [
-                new Paragraph({
-                  alignment: AlignmentType.RIGHT,
-                  children: [new TextRun(formatearMonto(monto, a.tipo_moneda))],
-                }),
-              ],
-              width: { size: 35, type: WidthType.PERCENTAGE },
-            }),
-          ],
-        })
-      );
+      doc.text(linea, 15, y);
+      doc.text(formatearMonto(monto, a?.tipo_moneda), 150, y, { align: 'right' });
+      y += 8;
     });
 
-    const tablaPagos = new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows,
-      borders: {
-        top: { style: BorderStyle.SINGLE, size: 1, color: 'DDDDDD' },
-        bottom: { style: BorderStyle.SINGLE, size: 1, color: 'DDDDDD' },
-        left: { style: BorderStyle.SINGLE, size: 1, color: 'DDDDDD' },
-        right: { style: BorderStyle.SINGLE, size: 1, color: 'DDDDDD' },
-        insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: 'EEEEEE' },
-        insideVertical: { style: BorderStyle.SINGLE, size: 1, color: 'EEEEEE' },
-      },
-    });
+    y += 6;
+    doc.line(15, y, 195, y);
+    y += 8;
 
-    // 6) Totales por moneda (incluye la seña en su moneda)
-    const totalAdicARS = adics
-      .filter((a) => (a?.tipo_moneda || 'ARS').toUpperCase() === 'ARS')
-      .reduce((s, a) => s + (Number(a.monto) || 0), 0);
-
-    const totalAdicUSD = adics
-      .filter((a) => (a?.tipo_moneda || 'ARS').toUpperCase() === 'USD')
-      .reduce((s, a) => s + (Number(a.monto) || 0), 0);
-
-    const totalARS = (senaMoneda === 'ARS' ? senaMonto : 0) + totalAdicARS;
-    const totalUSD = (senaMoneda === 'USD' ? senaMonto : 0) + totalAdicUSD;
-
-    const totales = [];
+    // Totales por moneda (solo si son > 0)
+    doc.setFont(undefined, 'bold');
     if (totalARS > 0) {
-      totales.push(
-        new Paragraph({
-          alignment: AlignmentType.RIGHT,
-          children: [Bold(`Total (AR$): ${formatearMonto(totalARS, 'ARS')}`)],
-          spacing: { before: 100 },
-        })
-      );
+      doc.text('Total Pagado (AR$):', 120, y);
+      doc.text(formatearMonto(totalARS, 'ARS'), 195, y, { align: 'right' });
+      y += 8;
     }
     if (totalUSD > 0) {
-      totales.push(
-        new Paragraph({
-          alignment: AlignmentType.RIGHT,
-          children: [Bold(`Total (U$D): ${formatearMonto(totalUSD, 'USD')}`)],
-        })
-      );
+      doc.text('Total Pagado (U$D):', 120, y);
+      doc.text(formatearMonto(totalUSD, 'USD'), 195, y, { align: 'right' });
+      y += 8;
     }
 
-    // ── Documento
-    const doc = new Document({
-      sections: [
-        {
-          children: [
-            ...header,
-            ...datosComplejo,
-            ...datosReserva,
-            new Paragraph({ children: [Bold('Pagos')], spacing: { after: 100 } }),
-            tablaPagos,
-            ...totales,
-          ],
-        },
-      ],
-    });
-
-    const blob = await Packer.toBlob(doc);
-    saveAs(blob, `Reserva_${reserva.cliente}.docx`);
+    doc.save(`Reserva_${reserva.cliente}.pdf`);
   };
 
   if (loading) return <ScreenLoader />;
@@ -336,16 +199,13 @@ function ReservaDetalle() {
           <div className="detalle__container">
             <h2 className="detalle__title">Detalle de Reserva</h2>
             <div className="card card--lg detalle__card">
-              <p style={{color:'#ffb4b4'}}>No se pudo cargar la reserva.</p>
+              <p style={{ color: '#ffb4b4' }}>No se pudo cargar la reserva.</p>
             </div>
           </div>
         </div>
       </>
     );
   }
-
-  const fmt = (n) => Number(n).toLocaleString('es-AR');
-  const fdate = (d) => new Date(d).toLocaleDateString('es-AR');
 
   return (
     <>
@@ -373,22 +233,41 @@ function ReservaDetalle() {
               }}
             />
 
-            <h3 style={{margin:'0 0 4px'}}>Adicionales</h3>
+            <h3 style={{ margin: '0 0 4px' }}>Adicionales</h3>
             {adicionales.length === 0 ? (
-              <p className="detalle__row" style={{color:'var(--text-dim)'}}>No hay adicionales.</p>
+              <p className="detalle__row" style={{ color: 'var(--text-dim)' }}>No hay adicionales.</p>
             ) : (
               <ul className="detalle__adics">
-                {adicionales.map((a,i)=>(
+                {adicionales.map((a, i) => (
                   <li key={i} className="detalle__row">
-                    {formatearMonto(a.monto, a.tipo_moneda)} - {a.descripcion}
+                    {formatearMonto(a?.monto, a?.tipo_moneda)} — {fdate(a?.fecha_pago)} — {a?.descripcion || '—'}
                   </li>
                 ))}
               </ul>
             )}
 
+            {(totalARS > 0 || totalUSD > 0) && (
+              <>
+                <hr
+                  style={{
+                    border: 'none',
+                    borderTop: '1px solid rgba(255,255,255,.08)',
+                    margin: '10px 0'
+                  }}
+                />
+                <h3 style={{ margin: '0 0 8px' }}>Totales Pagados</h3>
+                {totalARS > 0 && (
+                  <p className="detalle__row"><strong>Total (AR$):</strong> {formatearMonto(totalARS, 'ARS')}</p>
+                )}
+                {totalUSD > 0 && (
+                  <p className="detalle__row"><strong>Total (U$D):</strong> {formatearMonto(totalUSD, 'USD')}</p>
+                )}
+              </>
+            )}
+
             {userId === 1 && (
-              <div className="detalle__actions" style={{ display:'flex', gap:8 }}>
-                <button className="btn btn--ghost" onClick={descargarDOCX}>📝 Descargar Comprobante de Pago</button>
+              <div className="detalle__actions">
+                <button className="btn btn--primary" onClick={descargarPDF}>📄 Descargar PDF</button>
               </div>
             )}
           </div>
