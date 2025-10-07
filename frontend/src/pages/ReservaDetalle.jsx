@@ -74,12 +74,23 @@ function ReservaDetalle() {
   // Helpers UI
   const fdate = (d) => {
     if (!d) return '—';
-    try {
-      return new Date(d).toLocaleDateString('es-AR');
-    } catch {
-      return '—';
+
+    // "YYYY-MM-DD" (date-only, sin zona)
+    if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      const [y, m, dd] = d.split('-');
+      return `${dd}/${m}/${y}`; // es-AR
     }
+
+    // "YYYY-MM-DDTHH:mm[:ss]" sin 'Z' ni offset → usar tu parser local
+    if (typeof d === 'string' && /T/.test(d) && !/Z|[+-]\d{2}:\d{2}$/.test(d)) {
+      const dt = parseLocalDateTime(d);       // la función que ya tenés
+      return dt.toLocaleDateString('es-AR');
+    }
+
+    // Si viene con zona (Z u offset) o ya es Date
+    return new Date(d).toLocaleDateString('es-AR');
   };
+
 
   // Acumuladores por moneda (evita leer de `reserva` si aún es null)
   const totalARS =
